@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3">File Converter</h1>
+    <p class="text-muted mb-4">
+        Select the source and target formats, then upload one or more files to convert.
+    </p>
+
+    <div class="card shadow-sm">
+        <!-- form area -->
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="row g-3 align-items-end">
+                    <!-- From select -->
+                    <div class="col-md-4">
+                        <label for="fromFormat" class="form-label">From</label>
+                        <select class="form-select" id="fromFormat" name="from_format">
+                            <option value="" disabled {% if not from_format %}selected{% endif %}>
+                                Choose source format
+                            </option>
+                            <option value="png"  {% if from_format == "png"  %}selected{% endif %}>PNG</option>
+                            <option value="jpg"  {% if from_format == "jpg"  %}selected{% endif %}>JPG</option>
+                            <option value="jpeg" {% if from_format == "jpeg" %}selected{% endif %}>JPEG</option>
+                            <option value="pdf"  {% if from_format == "pdf"  %}selected{% endif %}>PDF</option>
+                            <option value="docx" {% if from_format == "docx" %}selected{% endif %}>DOCX (Word)</option>
+                            <option value="pptx" {% if from_format == "pptx" %}selected{% endif %}>PPTX (PowerPoint)</option>
+                            <option value="xlsx" {% if from_format == "xlsx" %}selected{% endif %}>XLSX (Excel)</option>
+                            <option value="txt"  {% if from_format == "txt"  %}selected{% endif %}>TXT</option>
+                        </select>
+                    </div>
+
+                    <!-- To select -->
+                    <div class="col-md-4">
+                        <label for="toFormat" class="form-label">To</label>
+                        <select class="form-select" id="toFormat" name="to_format">
+                            <option value="" disabled {% if not to_format %}selected{% endif %}>
+                                Choose target format
+                            </option>
+                            <option value="png"  {% if to_format == "png"  %}selected{% endif %}>PNG</option>
+                            <option value="jpg"  {% if to_format == "jpg"  %}selected{% endif %}>JPG</option>
+                            <option value="jpeg" {% if to_format == "jpeg" %}selected{% endif %}>JPEG</option>
+                            <option value="pdf"  {% if to_format == "pdf"  %}selected{% endif %}>PDF</option>
+                            <option value="docx" {% if to_format == "docx" %}selected{% endif %}>DOCX (Word)</option>
+                            <option value="pptx" {% if to_format == "pptx" %}selected{% endif %}>PPTX (PowerPoint)</option>
+                            <option value="xlsx" {% if to_format == "xlsx" %}selected{% endif %}>XLSX (Excel)</option>
+                            <option value="txt"  {% if to_format == "txt"  %}selected{% endif %}>TXT</option>
+                        </select>
+                    </div>
+
+                    <!-- File input (multiple) -->
+                    <div class="col-md-4">
+                        <label for="fileInput" class="form-label">Files</label>
+                        <input
+                            class="form-control"
+                            type="file"
+                            id="fileInput"
+                            name="files"
+                            multiple
+                        >
+                    </div>
+                </div>
+
+                <!-- PDF mode row: only visible for image → PDF -->
+                <div class="row g-3 mt-3 align-items-end" id="pdfModeRow" style="display: none;">
+                    <div class="col-md-4">
+                        <label for="pdfMode" class="form-label">PDF Output Mode</label>
+                        <select class="form-select" id="pdfMode" name="pdf_mode">
+                            <option value="merge" {% if pdf_mode == "merge" %}selected{% endif %}>
+                                Merge into one PDF
+                            </option>
+                            <option value="separate" {% if pdf_mode == "separate" %}selected{% endif %}>
+                                Create separate PDFs (ZIP)
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="form-text">
+                            <strong>Merge into one PDF</strong> : All images will be combined into a single multi-page PDF. <br>
+                            <strong>Create separate PDFs</strong> : Each image becomes its own one-page PDF, delivered as a ZIP file.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-text mt-2">
+                    You can select one or multiple files.
+                    <span class="fw-bold">
+                        All files <span class="text-danger">must match</span> the selected source format.
+                    </span>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        Convert
+                    </button>
+                </div>
+            </form>
+
+        </div>
+
+        <!-- message area -->
+        {% if error_message or success_message %}
+            <div class="card-footer bg-white border-top-0">
+                {% if error_message %}
+                    <div class="alert alert-danger mb-0" role="alert">
+                        {{ error_message }}
+                    </div>
+                {% elif success_message %}
+                    <div class="alert alert-success mb-0" role="alert">
+                        {{ success_message }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Allowed pairs on frontend (UX only).
+    // MUST stay in sync with ALLOWED_CONVERSIONS in views.py.
+    const allowedPairs = new Set([
+        // Image ↔ Image
+        "png->jpg", "png->jpeg",
+        "jpg->png", "jpeg->png",
+
+        // Image → PDF
+        "png->pdf", "jpg->pdf", "jpeg->pdf",
+
+        // Document → PDF
+        "docx->pdf", "pptx->pdf", "xlsx->pdf", "txt->pdf",
+
+        // PDF → Image
+        "pdf->png", "pdf->jpg", "pdf->jpeg",
+    ]);
+
+    const imageFormats = new Set(["png", "jpg", "jpeg"]);
+
+    const fromSelect = document.getElementById("fromFormat");
+    const toSelect = document.getElementById("toFormat");
+    const pdfModeRow = document.getElementById("pdfModeRow");
+
+    function updatePdfModeVisibility() {
+        const from = fromSelect.value;
+        const to = toSelect.value;
+
+        if (imageFormats.has(from) && to === "pdf") {
+            pdfModeRow.style.display = "flex";  // bootstrap row uses flex
+        } else {
+            pdfModeRow.style.display = "none";
+        }
+    }
+
+    function filterToOptions() {
+        const from = fromSelect.value;
+
+        for (const option of toSelect.options) {
+            if (option.value === "") {
+                option.hidden = false;
+                continue;
+            }
+
+            const key = `${from}->${option.value}`;
+            const isAllowed = allowedPairs.has(key);
+            option.hidden = !isAllowed;
+        }
+
+        // If currently selected 'to' is hidden, move to first visible option
+        const selected = toSelect.selectedOptions[0];
+        if (selected && selected.hidden) {
+            const firstVisible = Array.from(toSelect.options).find(
+                o => !o.hidden && o.value !== ""
+            );
+            if (firstVisible) {
+                firstVisible.selected = true;
+            } else {
+                const placeholder = toSelect.querySelector('option[value=""]');
+                if (placeholder) placeholder.selected = true;
+            }
+        }
+
+        // After filtering, update PDF mode visibility
+        updatePdfModeVisibility();
+    }
+
+    fromSelect.addEventListener("change", filterToOptions);
+    toSelect.addEventListener("change", updatePdfModeVisibility);
+
+    document.addEventListener("DOMContentLoaded", function () {
+        filterToOptions();          // apply allowedPairs filtering
+        updatePdfModeVisibility();  // correct initial pdf mode visibility
+    });
+</script>
+{% endblock %}
