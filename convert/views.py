@@ -11,28 +11,38 @@ from django.http import FileResponse
 from PIL import Image  # pip install pillow
 
 
-# Allowed conversion pairs
+# Allowed conversion pairs (메뉴와 반드시 맞춰야 하는 셋)
 ALLOWED_CONVERSIONS = {
     # Image ↔ Image
-    ("png", "jpg"), ("png", "jpeg"),
-    ("jpg", "png"), ("jpeg", "png"),
+    ("png", "jpg"),
+    ("png", "jpeg"),
+    ("jpg", "png"),
+    ("jpg", "jpeg"),
+    ("jpeg", "png"),
+    ("jpeg", "jpg"),
 
     # Image → PDF
-    ("png", "pdf"), ("jpg", "pdf"), ("jpeg", "pdf"),
+    ("png", "pdf"),
+    ("jpg", "pdf"),
+    ("jpeg", "pdf"),
 
     # Document → PDF
-    ("docx", "pdf"), ("pptx", "pdf"),
-    ("xlsx", "pdf"), ("txt", "pdf"),
+    ("docx", "pdf"),
+    ("pptx", "pdf"),
+    ("xlsx", "pdf"),
+    ("txt", "pdf"),
 
     # PDF → Image
-    ("pdf", "png"), ("pdf", "jpg"), ("pdf", "jpeg"),
+    ("pdf", "png"),
+    ("pdf", "jpg"),
+    ("pdf", "jpeg"),
 }
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 DOC_FORMATS = {"docx", "pptx", "xlsx"}
 
 
-def file_converter(request):
+def file_converter(request, from_fmt=None, to_fmt=None):
     """
     Main file converter view.
 
@@ -43,15 +53,30 @@ def file_converter(request):
         - DOCX/PPTX/XLSX → PDF (via LibreOffice)
         - TXT → PDF (via reportlab)
         - PDF → Image (via pdf2image)
+
+    from_fmt, to_fmt:
+        /convert/png_to_pdf/file_convert/ 처럼 path 파라미터로 들어온 기본 포맷 값.
     """
 
     error_message = None
     success_message = None
 
-    from_format = request.POST.get("from_format", "").lower() if request.method == "POST" else ""
-    to_format = request.POST.get("to_format", "").lower() if request.method == "POST" else ""
-    pdf_mode = request.POST.get("pdf_mode", "merge") if request.method == "POST" else "merge"
+    # -----------------------------
+    # 1) 포맷 기본값 결정 (GET / path)
+    # -----------------------------
+    if request.method == "POST":
+        from_format = request.POST.get("from_format", "").lower()
+        to_format = request.POST.get("to_format", "").lower()
+        pdf_mode = request.POST.get("pdf_mode", "merge")
+    else:
+        # path 파라미터가 우선, 없으면 쿼리스트링 (?from=png&to=pdf)
+        from_format = (from_fmt or request.GET.get("from", "")).lower()
+        to_format = (to_fmt or request.GET.get("to", "")).lower()
+        pdf_mode = request.GET.get("pdf_mode", "merge") or "merge"
 
+    # -----------------------------
+    # 2) POST 요청(실제 변환 처리)
+    # -----------------------------
     if request.method == "POST":
         files = request.FILES.getlist("files")
 
@@ -234,21 +259,26 @@ def file_converter(request):
         # 10. Fallback (should not normally reach here)
         # ---------------------------
         success_message = (
-            f"Validation passed, but conversion for {from_format.upper()} → {to_format.upper()} "
-            f"is not implemented yet."
+            f"Validation passed, but conversion for {from_format.upper()} → "
+            f"{to_format.upper()} is not implemented yet."
         )
 
+    # GET 요청이거나, 검증 실패 후 다시 그리는 경우
     return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
 
 def _render(request, error, success, from_fmt, to_fmt, pdf_mode):
-    return render(request, "convert/file_converter.html", {
-        "error_message": error,
-        "success_message": success,
-        "from_format": from_fmt,
-        "to_format": to_fmt,
-        "pdf_mode": pdf_mode,
-    })
+    return render(
+        request,
+        "convert/file_converter.html",
+        {
+            "error_message": error,
+            "success_message": success,
+            "from_format": from_fmt,
+            "to_format": to_fmt,
+            "pdf_mode": pdf_mode,
+        },
+    )
 
 
 # =========================
@@ -465,7 +495,10 @@ def _txt_file_to_pdf_buffer(uploaded_file):
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas
     except ImportError:
-        raise RuntimeError("reportlab is required for TXT → PDF conversion. Install it with 'pip install reportlab'.")
+        raise RuntimeError(
+            "reportlab is required for TXT → PDF conversion. "
+            "Install it with 'pip install reportlab'."
+        )
 
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -551,3 +584,64 @@ def _pdfs_to_images_zip(files, to_ext: str, base_prefix: str):
     zip_buffer.seek(0)
     zip_name = f"{base_prefix}_converted_ezkito.zip"
     return zip_buffer, zip_name
+
+
+# =========================
+# Landing pages (SEO / Marketing)
+# =========================
+
+def _render_landing(request, title, description, from_default, to_default):
+    """
+    공용 랜딩 템플릿 렌더링 헬퍼.
+    from_default / to_default 는 랜딩에서 변환 페이지로 넘어갈 때 기본값으로 사용.
+    """
+    return render(
+        request,
+        "convert/landing_base.html",
+        {
+            "title": title,
+            "description": description,
+            "from_default": from_default,
+            "to_default": to_default,
+        },
+    )
+
+
+def landing_png_to_pdf(request):
+    return _render_landing(
+        request,
+        title="Convert PNG to PDF Online — Free & Fast | EzKito",
+        description="Convert PNG images to PDF instantly with EzKito. Free, fast, and no signup required.",
+        from_default="png",
+        to_default="pdf",
+    )
+
+
+def landing_jpg_to_pdf(request):
+    return _render_landing(
+        request,
+        title="Convert JPG to PDF Online — Easy & Free | EzKito",
+        description="Turn JPG images into high-quality PDF files in seconds. 100% free and privacy-friendly.",
+        from_default="jpg",
+        to_default="pdf",
+    )
+
+
+def landing_pdf_to_jpg(request):
+    return _render_landing(
+        request,
+        title="Convert PDF to JPG — Extract Images Easily | EzKito",
+        description="Extract JPG images from any PDF document instantly. Fast, secure, and no account required.",
+        from_default="pdf",
+        to_default="jpg",
+    )
+
+
+def landing_docx_to_pdf(request):
+    return _render_landing(
+        request,
+        title="Convert DOCX to PDF — Word to PDF Online | EzKito",
+        description="Convert Word documents (DOCX) to PDF with one click. Free, reliable, and accurate formatting.",
+        from_default="docx",
+        to_default="pdf",
+    )

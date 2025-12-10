@@ -1,145 +1,204 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8" />
-    <title>Ezkito</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+{% load static %}
 
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ezkito{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
     <style>
-        /* 드롭다운을 hover로 열리게 하는 커스텀 */
-        .navbar-nav .dropdown:hover .dropdown-menu {
-            display: block;
-            margin-top: 0; /* 살짝 아래로 밀리는 현상 방지용 */
+        /* Header Navigation Styling */
+        .navbar {
+            background-color: #0d6efd !important; /* EzKito Blue */
         }
-    </style>
-</head>
-<body>
-<nav class="navbar navbar-expand-lg bg-dark navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="#">Ezkito</a>
 
+        .navbar-nav .nav-link {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            font-size: 1rem;
+        }
+
+        .navbar-nav .nav-item {
+            margin-right: 15px;
+        }
+
+        .navbar-brand {
+            font-size: 1.35rem;
+            font-weight: bold;
+        }
+
+        body {
+            background-color: #f8f9fa;
+        }
+
+        /* Page container padding */
+        .content-container {
+            padding: 2rem 2.5rem;
+        }
+
+        /* Navigation Text Colors */
+        .navbar-dark .navbar-nav .nav-link {
+            color: #ffffff !important;
+        }
+
+        .navbar-dark .navbar-nav .nav-link:hover {
+            color: #e6e6e6 !important; /* 약간 밝게 */
+        }
+
+        /* Dropdown menu 글씨 */
+        .dropdown-menu .dropdown-item {
+            color: #000000 !important; /* 드롭다운 내부는 기본적으로 검정 */
+        }
+
+        .dropdown-menu .dropdown-item:hover {
+            background-color: #e9ecef !important;
+            color: #000000 !important;
+        }
+
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+<!-- ================= HEADER ================= -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+
+        <!-- Brand Logo -->
+        <a class="navbar-brand" href="{% url 'core:home' %}">
+            Ezkito
+        </a>
+
+        <!-- Mobile menu button -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#mainNavbar" aria-controls="mainNavbar"
+                data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown"
                 aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <!-- Navigation Menus -->
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav ms-3">
 
-               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="menu-file"
-                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    File
-                </a>
-                   <ul class="dropdown-menu" aria-labelledby="menu-file">
-                        <li>
-                            <a class="dropdown-item" href="{% url 'convert:file_converter' %}">
-                                File Converter
-                            </a>
-                        </li>
+                <!-- File Menu -->
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="convertDropdown"
+                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Convert
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="convertDropdown">
+
+                        <!-- Image ↔ Image -->
+                        <li><h6 class="dropdown-header">Image ↔ Image</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'jpg' %}">PNG → JPG</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'jpeg' %}">PNG → JPEG</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpg' 'png' %}">JPG → PNG</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpeg' 'png' %}">JPEG → PNG</a></li>
+
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#">Menu 1-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 1-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 1-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 1-5</a></li>
+
+                        <!-- Image → PDF -->
+                        <li><h6 class="dropdown-header">Image → PDF</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'pdf' %}">PNG → PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpg' 'pdf' %}">JPG → PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpeg' 'pdf' %}">JPEG → PDF</a></li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- Document → PDF -->
+                        <li><h6 class="dropdown-header">Document → PDF</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'docx' 'pdf' %}">DOCX → PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pptx' 'pdf' %}">PPTX → PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'xlsx' 'pdf' %}">XLSX → PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'txt' 'pdf' %}">TXT → PDF</a></li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- PDF → Image -->
+                        <li><h6 class="dropdown-header">PDF → Image</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'png' %}">PDF → PNG</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'jpg' %}">PDF → JPG</a></li>
+                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'jpeg' %}">PDF → JPEG</a></li>
+
                     </ul>
                 </li>
 
-                <!-- Menu 2 -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu2"
+
+                <!-- Empty Menus (for future features) -->
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="menu2Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu2
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="menu2">
-                        <li><a class="dropdown-item" href="#">Menu 2-1</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 2-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 2-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 2-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 2-5</a></li>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
                     </ul>
                 </li>
 
-                <!-- Menu 3 -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu3"
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="menu3Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu3
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="menu3">
-                        <li><a class="dropdown-item" href="#">Menu 3-1</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 3-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 3-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 3-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 3-5</a></li>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
                     </ul>
                 </li>
 
-                <!-- Menu 4 -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu4"
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="menu4Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu4
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="menu4">
-                        <li><a class="dropdown-item" href="#">Menu 4-1</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 4-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 4-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 4-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 4-5</a></li>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
                     </ul>
                 </li>
 
-                <!-- Menu 5 -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu5"
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="menu5Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu5
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="menu5">
-                        <li><a class="dropdown-item" href="#">Menu 5-1</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 5-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 5-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 5-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 5-5</a></li>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
                     </ul>
                 </li>
 
-                <!-- Menu 6 -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu6"
+                <li class="nav-item dropdown me-4">
+                    <a class="nav-link dropdown-toggle" href="#" id="menu6Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu6
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="menu6">
-                        <li><a class="dropdown-item" href="#">Menu 6-1</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 6-2</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 6-3</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 6-4</a></li>
-                        <li><a class="dropdown-item" href="#">Menu 6-5</a></li>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
                     </ul>
                 </li>
-            </ul>
 
-            <!-- 오른쪽 영역 (로그인 버튼 등 나중에 넣으면 됨) -->
-            <span class="navbar-text text-light">
-                Beta
-            </span>
+            </ul>
         </div>
+
     </div>
 </nav>
+<!-- =============== END HEADER ================= -->
 
-<div class="container mt-4">
-    {% block content %}
-    <!-- 페이지별 컨텐츠 -->
-    {% endblock %}
+<!-- =============== PAGE CONTENT AREA =============== -->
+<div class="content-container">
+    {% block content %}{% endblock %}
 </div>
 
 <!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block extra_js %}{% endblock %}
 </body>
 </html>

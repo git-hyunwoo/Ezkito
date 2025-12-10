@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <h1 class="fw-bold mb-3">{{ title }}</h1>
+
+    <p class="text-muted mb-4" style="font-size: 1.1rem;">
+        {{ description }}
+    </p>
+
+    <hr>
+
+    <h3 class="mt-4">How it works</h3>
+    <ol class="mt-2">
+        <li>Click the button below to open the EzKito converter.</li>
+        <li>The FROM and TO formats will be automatically selected.</li>
+        <li>Upload your files and download the converted output.</li>
+    </ol>
+
+    <div class="mt-4">
+        <!-- 예: /convert/png_to_pdf/file_convert/ -->
+        <a
+            href="{% url 'convert:file_converter_fmt' from_default to_default %}"
+            class="btn btn-primary btn-lg fw-bold"
+        >
+            Start Converting
+        </a>
+    </div>
+
+    <hr class="my-5">
+
+    <h3>FAQ</h3>
+
+    <h5 class="mt-3">Is EzKito free?</h5>
+    <p>Yes, EzKito is completely free to use and does not require any signup.</p>
+
+    <h5 class="mt-3">Are my files safe?</h5>
+    <p>
+        Files are processed on the server only for the duration of the conversion.
+        EzKito does not keep or share your files.
+    </p>
+
+    <h5 class="mt-3">Can I convert multiple files at once?</h5>
+    <p>
+        Yes, you can upload multiple files at once. For some conversions, EzKito will
+        return a ZIP file containing all results.
+    </p>
+
+</div>
+{% endblock %}
