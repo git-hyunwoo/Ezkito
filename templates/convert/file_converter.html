@@ -21,14 +21,31 @@
                             <option value="" disabled {% if not from_format %}selected{% endif %}>
                                 Choose source format
                             </option>
-                            <option value="png"  {% if from_format == "png"  %}selected{% endif %}>PNG</option>
-                            <option value="jpg"  {% if from_format == "jpg"  %}selected{% endif %}>JPG</option>
-                            <option value="jpeg" {% if from_format == "jpeg" %}selected{% endif %}>JPEG</option>
+
+                            <!-- Image -->
+                            <option value="png"  {% if from_format == "png"  %}selected{% endif %}>PNG (Image)</option>
+                            <option value="jpg"  {% if from_format == "jpg"  %}selected{% endif %}>JPG (Image)</option>
+                            <option value="jpeg" {% if from_format == "jpeg" %}selected{% endif %}>JPEG (Image)</option>
+
+                            <!-- Document -->
                             <option value="pdf"  {% if from_format == "pdf"  %}selected{% endif %}>PDF</option>
                             <option value="docx" {% if from_format == "docx" %}selected{% endif %}>DOCX (Word)</option>
                             <option value="pptx" {% if from_format == "pptx" %}selected{% endif %}>PPTX (PowerPoint)</option>
                             <option value="xlsx" {% if from_format == "xlsx" %}selected{% endif %}>XLSX (Excel)</option>
                             <option value="txt"  {% if from_format == "txt"  %}selected{% endif %}>TXT</option>
+
+                            <!-- Video -->
+                            <option value="mp4" {% if from_format == "mp4" %}selected{% endif %}>MP4 (Video)</option>
+                            <option value="mov" {% if from_format == "mov" %}selected{% endif %}>MOV (Video)</option>
+                            <option value="avi" {% if from_format == "avi" %}selected{% endif %}>AVI (Video)</option>
+                            <option value="mkv" {% if from_format == "mkv" %}selected{% endif %}>MKV (Video)</option>
+
+                            <!-- Audio -->
+                            <option value="mp3" {% if from_format == "mp3" %}selected{% endif %}>MP3 (Audio)</option>
+                            <option value="wav" {% if from_format == "wav" %}selected{% endif %}>WAV (Audio)</option>
+                            <option value="m4a" {% if from_format == "m4a" %}selected{% endif %}>M4A (Audio)</option>
+                            <option value="aac" {% if from_format == "aac" %}selected{% endif %}>AAC (Audio)</option>
+                            <option value="ogg" {% if from_format == "ogg" %}selected{% endif %}>OGG (Audio)</option>
                         </select>
                     </div>
 
@@ -39,14 +56,31 @@
                             <option value="" disabled {% if not to_format %}selected{% endif %}>
                                 Choose target format
                             </option>
-                            <option value="png"  {% if to_format == "png"  %}selected{% endif %}>PNG</option>
-                            <option value="jpg"  {% if to_format == "jpg"  %}selected{% endif %}>JPG</option>
-                            <option value="jpeg" {% if to_format == "jpeg" %}selected{% endif %}>JPEG</option>
+
+                            <!-- Image -->
+                            <option value="png"  {% if to_format == "png"  %}selected{% endif %}>PNG (Image)</option>
+                            <option value="jpg"  {% if to_format == "jpg"  %}selected{% endif %}>JPG (Image)</option>
+                            <option value="jpeg" {% if to_format == "jpeg" %}selected{% endif %}>JPEG (Image)</option>
+
+                            <!-- Document -->
                             <option value="pdf"  {% if to_format == "pdf"  %}selected{% endif %}>PDF</option>
                             <option value="docx" {% if to_format == "docx" %}selected{% endif %}>DOCX (Word)</option>
                             <option value="pptx" {% if to_format == "pptx" %}selected{% endif %}>PPTX (PowerPoint)</option>
                             <option value="xlsx" {% if to_format == "xlsx" %}selected{% endif %}>XLSX (Excel)</option>
                             <option value="txt"  {% if to_format == "txt"  %}selected{% endif %}>TXT</option>
+
+                            <!-- Video -->
+                            <option value="mp4" {% if to_format == "mp4" %}selected{% endif %}>MP4 (Video)</option>
+                            <option value="mov" {% if to_format == "mov" %}selected{% endif %}>MOV (Video)</option>
+                            <option value="avi" {% if to_format == "avi" %}selected{% endif %}>AVI (Video)</option>
+                            <option value="mkv" {% if to_format == "mkv" %}selected{% endif %}>MKV (Video)</option>
+
+                            <!-- Audio -->
+                            <option value="mp3" {% if to_format == "mp3" %}selected{% endif %}>MP3 (Audio)</option>
+                            <option value="wav" {% if to_format == "wav" %}selected{% endif %}>WAV (Audio)</option>
+                            <option value="m4a" {% if to_format == "m4a" %}selected{% endif %}>M4A (Audio)</option>
+                            <option value="aac" {% if to_format == "aac" %}selected{% endif %}>AAC (Audio)</option>
+                            <option value="ogg" {% if to_format == "ogg" %}selected{% endif %}>OGG (Audio)</option>
                         </select>
                     </div>
 
@@ -84,17 +118,13 @@
                     </div>
                 </div>
 
-                <div class="form-text mt-2">
-                    You can select one or multiple files.
-                    <span class="fw-bold">
-                        All files <span class="text-danger">must match</span> the selected source format.
-                    </span>
-                </div>
-
-                <div class="mt-4 d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary">
-                        Convert
-                    </button>
+                <!-- Submit button -->
+                <div class="row mt-4">
+                    <div class="col text-end">
+                        <button type="submit" class="btn btn-primary">
+                            Start Convert
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -117,13 +147,15 @@
     </div>
 </div>
 
+<!-- Simple JS to filter allowed pairs and handle PDF mode visibility -->
 <script>
     // Allowed pairs on frontend (UX only).
     // MUST stay in sync with ALLOWED_CONVERSIONS in views.py.
     const allowedPairs = new Set([
         // Image ↔ Image
         "png->jpg", "png->jpeg",
-        "jpg->png", "jpeg->png",
+        "jpg->png", "jpg->jpeg",
+        "jpeg->png", "jpeg->jpg",
 
         // Image → PDF
         "png->pdf", "jpg->pdf", "jpeg->pdf",
@@ -133,6 +165,13 @@
 
         // PDF → Image
         "pdf->png", "pdf->jpg", "pdf->jpeg",
+
+        // Video → Audio
+        "mp4->mp3", "mp4->wav",
+        "mov->mp3", "avi->mp3", "mkv->mp3",
+
+        // Audio → Video
+        "mp3->mp4", "wav->mp4", "m4a->mp4", "aac->mp4", "ogg->mp4",
     ]);
 
     const imageFormats = new Set(["png", "jpg", "jpeg"]);
@@ -163,21 +202,24 @@
 
             const key = `${from}->${option.value}`;
             const isAllowed = allowedPairs.has(key);
+
             option.hidden = !isAllowed;
         }
 
-        // If currently selected 'to' is hidden, move to first visible option
-        const selected = toSelect.selectedOptions[0];
-        if (selected && selected.hidden) {
-            const firstVisible = Array.from(toSelect.options).find(
-                o => !o.hidden && o.value !== ""
-            );
-            if (firstVisible) {
-                firstVisible.selected = true;
-            } else {
-                const placeholder = toSelect.querySelector('option[value=""]');
-                if (placeholder) placeholder.selected = true;
+        // Select first visible option or placeholder
+        let firstVisible = null;
+        for (const option of toSelect.options) {
+            if (!option.hidden && option.value !== "") {
+                firstVisible = option;
+                break;
             }
+        }
+
+        if (firstVisible) {
+            firstVisible.selected = true;
+        } else {
+            const placeholder = toSelect.querySelector('option[value=""]');
+            if (placeholder) placeholder.selected = true;
         }
 
         // After filtering, update PDF mode visibility

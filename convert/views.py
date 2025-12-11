@@ -3,15 +3,30 @@ import os
 import tempfile
 import zipfile
 import subprocess
-from typing import List
+from typing import List, Tuple
 
 from django.shortcuts import render
-from django.http import FileResponse
+from django.http import FileResponse, HttpRequest, HttpResponse
 
 from PIL import Image  # pip install pillow
 
+# Optional libraries (install if needed)
+try:
+    from pdf2image import convert_from_bytes
+except ImportError:
+    convert_from_bytes = None
 
-# Allowed conversion pairs (메뉴와 반드시 맞춰야 하는 셋)
+try:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+except ImportError:
+    canvas = None
+    A4 = None
+
+
+# ============================================================
+# Allowed conversion pairs (must match menu / frontend)
+# ============================================================
 ALLOWED_CONVERSIONS = {
     # Image ↔ Image
     ("png", "jpg"),
@@ -36,13 +51,32 @@ ALLOWED_CONVERSIONS = {
     ("pdf", "png"),
     ("pdf", "jpg"),
     ("pdf", "jpeg"),
+
+    # Video → Audio
+    ("mp4", "mp3"),
+    ("mp4", "wav"),
+    ("mov", "mp3"),
+    ("avi", "mp3"),
+    ("mkv", "mp3"),
+
+    # Audio → Video
+    ("mp3", "mp4"),
+    ("wav", "mp4"),
+    ("m4a", "mp4"),
+    ("aac", "mp4"),
+    ("ogg", "mp4"),
 }
 
 IMAGE_FORMATS = {"png", "jpg", "jpeg"}
 DOC_FORMATS = {"docx", "pptx", "xlsx"}
+VIDEO_FORMATS = {"mp4", "mov", "avi", "mkv"}
+AUDIO_FORMATS = {"mp3", "wav", "m4a", "aac", "ogg"}
 
 
-def file_converter(request, from_fmt=None, to_fmt=None):
+# ============================================================
+# Main converter view
+# ============================================================
+def file_converter(request: HttpRequest, from_fmt: str | None = None, to_fmt: str | None = None) -> HttpResponse:
     """
     Main file converter view.
 
@@ -53,34 +87,33 @@ def file_converter(request, from_fmt=None, to_fmt=None):
         - DOCX/PPTX/XLSX → PDF (via LibreOffice)
         - TXT → PDF (via reportlab)
         - PDF → Image (via pdf2image)
-
-    from_fmt, to_fmt:
-        /convert/png_to_pdf/file_convert/ 처럼 path 파라미터로 들어온 기본 포맷 값.
+        - Video → Audio (via ffmpeg)
+        - Audio → Video (via ffmpeg + static background)
     """
 
     error_message = None
     success_message = None
 
     # -----------------------------
-    # 1) 포맷 기본값 결정 (GET / path)
+    # 1) Determine default formats
     # -----------------------------
     if request.method == "POST":
         from_format = request.POST.get("from_format", "").lower()
         to_format = request.POST.get("to_format", "").lower()
         pdf_mode = request.POST.get("pdf_mode", "merge")
     else:
-        # path 파라미터가 우선, 없으면 쿼리스트링 (?from=png&to=pdf)
+        # path params have priority, then query string (?from=png&to=pdf)
         from_format = (from_fmt or request.GET.get("from", "")).lower()
         to_format = (to_fmt or request.GET.get("to", "")).lower()
         pdf_mode = request.GET.get("pdf_mode", "merge") or "merge"
 
     # -----------------------------
-    # 2) POST 요청(실제 변환 처리)
+    # 2) POST: actual conversion
     # -----------------------------
     if request.method == "POST":
         files = request.FILES.getlist("files")
 
-        # 1. Required field validation for from/to
+        # 2-1. Required from/to
         if not from_format or not to_format:
             if not from_format and not to_format:
                 error_message = "Please select both source and target formats."
@@ -91,17 +124,17 @@ def file_converter(request, from_fmt=None, to_fmt=None):
 
             return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # 2. Validate allowed combination
+        # 2-2. Validate allowed combination
         if (from_format, to_format) not in ALLOWED_CONVERSIONS:
             error_message = f"Conversion from {from_format.upper()} to {to_format.upper()} is not supported."
             return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # 3. Validate files
+        # 2-3. Validate files
         if not files:
             error_message = "Please upload at least one file."
             return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # 4. Validate file extensions
+        # 2-4. Validate file extensions (all uploaded must match from_format)
         invalid_files: List[str] = []
         for f in files:
             if "." not in f.name:
@@ -119,14 +152,14 @@ def file_converter(request, from_fmt=None, to_fmt=None):
         # Base name for output (first file)
         base_name = files[0].name.rsplit(".", 1)[0]
 
-        # ---------------------------
+        # -------------------------------------------------
         # 5. Image → PDF
-        # ---------------------------
+        # -------------------------------------------------
         if from_format in IMAGE_FORMATS and to_format == "pdf":
             try:
                 if pdf_mode == "separate":
+                    # 각각 PDF
                     if len(files) == 1:
-                        # Single image → one PDF
                         pdf_buffer = _single_image_to_pdf(files[0])
                         filename = f"{base_name}_ezkito.pdf"
                         return FileResponse(
@@ -136,7 +169,7 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                             content_type="application/pdf",
                         )
                     else:
-                        # Multiple images → multiple PDFs inside ZIP
+                        # 여러 개 → 개별 PDF ZIP
                         zip_buffer = _convert_images_to_separate_pdfs_zip(files)
                         filename = f"{base_name}_separated_ezkito.zip"
                         return FileResponse(
@@ -146,27 +179,22 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                             content_type="application/zip",
                         )
                 else:
-                    # Merge mode (default)
+                    # merge mode
                     pdf_buffer = _merge_images_into_single_pdf(files)
-                    if len(files) == 1:
-                        filename = f"{base_name}_ezkito.pdf"
-                    else:
-                        filename = f"{base_name}_merged_ezkito.pdf"
-
+                    filename = f"{base_name}_merged_ezkito.pdf" if len(files) > 1 else f"{base_name}_ezkito.pdf"
                     return FileResponse(
                         pdf_buffer,
                         as_attachment=True,
                         filename=filename,
                         content_type="application/pdf",
                     )
-
             except Exception as e:
                 error_message = f"An error occurred during image to PDF conversion: {e}"
                 return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # ---------------------------
+        # -------------------------------------------------
         # 6. Image → Image (PNG/JPG/JPEG)
-        # ---------------------------
+        # -------------------------------------------------
         if from_format in IMAGE_FORMATS and to_format in IMAGE_FORMATS:
             try:
                 if len(files) == 1:
@@ -189,9 +217,9 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                 error_message = f"An error occurred during image to image conversion: {e}"
                 return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # ---------------------------
-        # 7. DOCX / PPTX / XLSX → PDF (LibreOffice)
-        # ---------------------------
+        # -------------------------------------------------
+        # 7. Document → PDF (LibreOffice)
+        # -------------------------------------------------
         if from_format in DOC_FORMATS and to_format == "pdf":
             try:
                 if len(files) == 1:
@@ -214,9 +242,9 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                 error_message = f"An error occurred during document to PDF conversion: {e}"
                 return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # ---------------------------
+        # -------------------------------------------------
         # 8. TXT → PDF (reportlab)
-        # ---------------------------
+        # -------------------------------------------------
         if from_format == "txt" and to_format == "pdf":
             try:
                 if len(files) == 1:
@@ -239,10 +267,14 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                 error_message = f"An error occurred during TXT to PDF conversion: {e}"
                 return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # ---------------------------
+        # -------------------------------------------------
         # 9. PDF → Image (pdf2image)
-        # ---------------------------
+        # -------------------------------------------------
         if from_format == "pdf" and to_format in IMAGE_FORMATS:
+            if convert_from_bytes is None:
+                error_message = "pdf2image is not installed. Please install it to use PDF to image conversion."
+                return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
+
             try:
                 zip_buffer, zip_name = _pdfs_to_images_zip(files, to_format, base_name)
                 return FileResponse(
@@ -255,36 +287,71 @@ def file_converter(request, from_fmt=None, to_fmt=None):
                 error_message = f"An error occurred during PDF to image conversion: {e}"
                 return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-        # ---------------------------
-        # 10. Fallback (should not normally reach here)
-        # ---------------------------
-        success_message = (
-            f"Validation passed, but conversion for {from_format.upper()} → "
-            f"{to_format.upper()} is not implemented yet."
-        )
+        # -------------------------------------------------
+        # 10. Video → Audio (ffmpeg)
+        # -------------------------------------------------
+        if from_format in VIDEO_FORMATS and to_format in AUDIO_FORMATS:
+            try:
+                return _handle_video_to_audio(request, files, from_format, to_format, base_name)
+            except Exception as e:
+                error_message = f"An error occurred during video to audio conversion: {e}"
+                return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
-    # GET 요청이거나, 검증 실패 후 다시 그리는 경우
+        # -------------------------------------------------
+        # 11. Audio → Video (ffmpeg + static background)
+        # -------------------------------------------------
+        if from_format in AUDIO_FORMATS and to_format in VIDEO_FORMATS:
+            try:
+                return _handle_audio_to_video(request, files, from_format, to_format, base_name)
+            except Exception as e:
+                error_message = f"An error occurred during audio to video conversion: {e}"
+                return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
+
+        # -------------------------------------------------
+        # 12. Fallback (should not reach here)
+        # -------------------------------------------------
+        error_message = "This conversion path is not implemented yet."
+        return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
+
+    # -----------------------------
+    # 3) GET: just render form
+    # -----------------------------
     return _render(request, error_message, success_message, from_format, to_format, pdf_mode)
 
 
-def _render(request, error, success, from_fmt, to_fmt, pdf_mode):
-    return render(
-        request,
-        "convert/file_converter.html",
-        {
-            "error_message": error,
-            "success_message": success,
-            "from_format": from_fmt,
-            "to_format": to_fmt,
-            "pdf_mode": pdf_mode,
-        },
-    )
+# ============================================================
+# Rendering helpers
+# ============================================================
+def _render(request, error_message, success_message, from_format, to_format, pdf_mode):
+    context = {
+        "error_message": error_message,
+        "success_message": success_message,
+        "from_format": from_format,
+        "to_format": to_format,
+        "pdf_mode": pdf_mode,
+    }
+    return render(request, "convert/file_converter.html", context)
 
 
-# =========================
+def _render_landing(request, title: str, description: str, from_default: str, to_default: str):
+    """
+    Landing-page-style renderer that pre-selects from/to.
+    """
+    context = {
+        "page_title": title,
+        "page_description": description,
+        "error_message": None,
+        "success_message": None,
+        "from_format": from_default,
+        "to_format": to_default,
+        "pdf_mode": "merge",
+    }
+    return render(request, "convert/file_converter.html", context)
+
+
+# ============================================================
 # Image helpers
-# =========================
-
+# ============================================================
 def _open_image_from_uploaded(f):
     """Open a Django UploadedFile as a Pillow Image in RGB mode."""
     img = Image.open(f)
@@ -302,316 +369,367 @@ def _single_image_to_pdf(f):
     return buffer
 
 
-def _merge_images_into_single_pdf(files):
+def _merge_images_into_single_pdf(files: List):
     """Merge multiple uploaded images into a single multi-page PDF."""
-    images = [_open_image_from_uploaded(f) for f in files]
+    images = []
+    for f in files:
+        img = _open_image_from_uploaded(f)
+        images.append(img)
 
     if not images:
-        raise ValueError("No valid images provided.")
+        raise ValueError("No images provided")
 
     buffer = io.BytesIO()
     first, *rest = images
-
-    if rest:
-        first.save(buffer, format="PDF", save_all=True, append_images=rest)
-    else:
-        first.save(buffer, format="PDF")
-
+    first.save(buffer, format="PDF", save_all=True, append_images=rest)
     buffer.seek(0)
     return buffer
 
 
-def _convert_images_to_separate_pdfs_zip(files):
-    """
-    Convert each uploaded image to its own one-page PDF,
-    then package all PDFs into an in-memory ZIP file.
-    """
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+def _convert_images_to_separate_pdfs_zip(files: List):
+    """Each image -> its own PDF; all PDFs zipped."""
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in files:
-            img = _open_image_from_uploaded(f)
-            pdf_bytes = io.BytesIO()
-            img.save(pdf_bytes, format="PDF")
-            pdf_bytes.seek(0)
-
-            base_name = f.name.rsplit(".", 1)[0]
-            pdf_filename = f"{base_name}_ezkito.pdf"
-
-            zip_file.writestr(pdf_filename, pdf_bytes.read())
-
-    zip_buffer.seek(0)
-    return zip_buffer
+            base = f.name.rsplit(".", 1)[0]
+            pdf_buffer = _single_image_to_pdf(f)
+            zf.writestr(f"{base}_ezkito.pdf", pdf_buffer.getvalue())
+    mem_zip.seek(0)
+    return mem_zip
 
 
-def _convert_single_image_to_image(f, to_ext: str):
-    """
-    Convert a single image to another image format (png/jpg/jpeg).
-    Returns (buffer, filename, mime_type).
-    """
+def _convert_single_image_to_image(f, to_format: str) -> Tuple[io.BytesIO, str, str]:
+    """Convert one image to another format."""
     img = _open_image_from_uploaded(f)
-
     buffer = io.BytesIO()
-    format_map = {
-        "jpg": "JPEG",
-        "jpeg": "JPEG",
-        "png": "PNG",
-    }
-    pil_format = format_map.get(to_ext, to_ext.upper())
-    img.save(buffer, format=pil_format)
+    img.save(buffer, format=to_format.upper())
     buffer.seek(0)
 
-    base_name = f.name.rsplit(".", 1)[0]
-    filename = f"{base_name}_ezkito.{to_ext}"
-
-    if to_ext in ("jpg", "jpeg"):
-        mime = "image/jpeg"
-    else:
-        mime = f"image/{to_ext}"
-
+    base = f.name.rsplit(".", 1)[0]
+    filename = f"{base}_ezkito.{to_format}"
+    mime = f"image/{'jpeg' if to_format == 'jpg' else to_format}"
     return buffer, filename, mime
 
 
-def _convert_images_to_images_zip(files, to_ext: str, base_prefix: str):
-    """
-    Convert multiple images to another image format and return a ZIP.
-    """
-    zip_buffer = io.BytesIO()
-
-    format_map = {
-        "jpg": "JPEG",
-        "jpeg": "JPEG",
-        "png": "PNG",
-    }
-    pil_format = format_map.get(to_ext, to_ext.upper())
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+def _convert_images_to_images_zip(files: List, to_format: str, base_name: str):
+    """Multiple images → multiple converted images inside ZIP."""
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in files:
             img = _open_image_from_uploaded(f)
-            img_buffer = io.BytesIO()
-            img.save(img_buffer, format=pil_format)
-            img_buffer.seek(0)
-
-            base_name = f.name.rsplit(".", 1)[0]
-            out_name = f"{base_name}_ezkito.{to_ext}"
-            zip_file.writestr(out_name, img_buffer.read())
-
-    zip_buffer.seek(0)
-    zip_name = f"{base_prefix}_converted_ezkito.zip"
-    return zip_buffer, zip_name
+            buffer = io.BytesIO()
+            img.save(buffer, format=to_format.upper())
+            buffer.seek(0)
+            original_base = f.name.rsplit(".", 1)[0]
+            out_name = f"{original_base}_ezkito.{to_format}"
+            zf.writestr(out_name, buffer.getvalue())
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_images_ezkito.zip"
+    return mem_zip, zip_name
 
 
-# =========================
-# Office (DOCX/PPTX/XLSX) → PDF (LibreOffice)
-# =========================
+# ============================================================
+# Office (DOCX/PPTX/XLSX) helpers – LibreOffice
+# ============================================================
+def _save_uploaded_to_temp(uploaded, suffix: str) -> str:
+    """Save uploaded file to a temp path and return the path."""
+    tmp_dir = tempfile.mkdtemp(prefix="ezkito_")
+    path = os.path.join(tmp_dir, f"input{suffix}")
+    with open(path, "wb") as f:
+        for chunk in uploaded.chunks():
+            f.write(chunk)
+    return path
 
-def _office_file_to_pdf_buffer(uploaded_file):
-    """
-    Use LibreOffice in headless mode to convert an office file to PDF.
-    Requires LibreOffice installed and available in PATH.
-    """
-    try:
-        import pathlib
-    except ImportError:
-        raise RuntimeError("pathlib is required for office conversion.")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_path = os.path.join(tmpdir, uploaded_file.name)
+def _office_single_to_pdf(uploaded):
+    """Convert a single DOCX/PPTX/XLSX file to PDF using LibreOffice."""
+    if uploaded.name.lower().endswith(".docx"):
+        suffix = ".docx"
+    elif uploaded.name.lower().endswith(".pptx"):
+        suffix = ".pptx"
+    else:
+        suffix = ".xlsx"
 
-        # Save uploaded file to temp path
-        with open(input_path, "wb") as dst:
-            for chunk in uploaded_file.chunks():
-                dst.write(chunk)
+    in_path = _save_uploaded_to_temp(uploaded, suffix)
+    out_dir = os.path.dirname(in_path)
 
-        # Run LibreOffice
-        try:
-            subprocess.run(
-                [
-                    "libreoffice",
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    tmpdir,
-                    input_path,
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except FileNotFoundError:
-            raise RuntimeError(
-                "LibreOffice is required for DOCX/PPTX/XLSX conversion but was not found on the system."
-            )
-        except subprocess.CalledProcessError:
-            raise RuntimeError("LibreOffice failed to convert the document to PDF.")
+    cmd = [
+        "soffice",
+        "--headless",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        out_dir,
+        in_path,
+    ]
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        pdf_name = pathlib.Path(input_path).with_suffix(".pdf").name
-        pdf_path = os.path.join(tmpdir, pdf_name)
+    base = os.path.splitext(os.path.basename(uploaded.name))[0]
+    out_path = os.path.join(out_dir, f"input.pdf")
 
-        if not os.path.exists(pdf_path):
-            raise RuntimeError("Converted PDF file not found after LibreOffice conversion.")
-
-        with open(pdf_path, "rb") as pf:
-            data = pf.read()
-
+    with open(out_path, "rb") as f:
+        data = f.read()
     buffer = io.BytesIO(data)
     buffer.seek(0)
-    return buffer
 
-
-def _office_single_to_pdf(uploaded_file):
-    buffer = _office_file_to_pdf_buffer(uploaded_file)
-    base_name = uploaded_file.name.rsplit(".", 1)[0]
-    filename = f"{base_name}_ezkito.pdf"
+    filename = f"{base}_ezkito.pdf"
     return buffer, filename
 
 
-def _office_files_to_pdf_zip(files, base_prefix: str):
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for f in files:
-            pdf_buffer = _office_file_to_pdf_buffer(f)
-            pdf_buffer.seek(0)
-            base_name = f.name.rsplit(".", 1)[0]
-            pdf_filename = f"{base_name}_ezkito.pdf"
-            zip_file.writestr(pdf_filename, pdf_buffer.read())
-
-    zip_buffer.seek(0)
-    zip_name = f"{base_prefix}_converted_ezkito.zip"
-    return zip_buffer, zip_name
+def _office_files_to_pdf_zip(files: List, base_name: str):
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        for uploaded in files:
+            pdf_buffer, filename = _office_single_to_pdf(uploaded)
+            zf.writestr(filename, pdf_buffer.getvalue())
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_office_ezkito.zip"
+    return mem_zip, zip_name
 
 
-# =========================
-# TXT → PDF (reportlab)
-# =========================
-
-def _txt_file_to_pdf_buffer(uploaded_file):
-    """
-    Convert a TXT file to a single-page PDF using reportlab.
-    """
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
-    except ImportError:
-        raise RuntimeError(
-            "reportlab is required for TXT → PDF conversion. "
-            "Install it with 'pip install reportlab'."
-        )
+# ============================================================
+# TXT → PDF helpers (reportlab)
+# ============================================================
+def _txt_single_to_pdf(uploaded):
+    if canvas is None or A4 is None:
+        raise RuntimeError("reportlab is not installed.")
 
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    text_obj = c.beginText(40, height - 40)
-
-    content = uploaded_file.read().decode("utf-8", errors="ignore").splitlines()
-    for line in content:
+    text_obj = c.beginText(40, height - 50)
+    for line in uploaded.read().decode("utf-8", errors="ignore").splitlines():
         text_obj.textLine(line)
-
     c.drawText(text_obj)
     c.showPage()
     c.save()
 
     buffer.seek(0)
-    return buffer
-
-
-def _txt_single_to_pdf(uploaded_file):
-    buffer = _txt_file_to_pdf_buffer(uploaded_file)
-    base_name = uploaded_file.name.rsplit(".", 1)[0]
-    filename = f"{base_name}_ezkito.pdf"
+    base = uploaded.name.rsplit(".", 1)[0]
+    filename = f"{base}_ezkito.pdf"
     return buffer, filename
 
 
-def _txt_files_to_pdf_zip(files, base_prefix: str):
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for f in files:
-            pdf_buffer = _txt_file_to_pdf_buffer(f)
-            pdf_buffer.seek(0)
-            base_name = f.name.rsplit(".", 1)[0]
-            pdf_filename = f"{base_name}_ezkito.pdf"
-            zip_file.writestr(pdf_filename, pdf_buffer.read())
-
-    zip_buffer.seek(0)
-    zip_name = f"{base_prefix}_converted_ezkito.zip"
-    return zip_buffer, zip_name
+def _txt_files_to_pdf_zip(files: List, base_name: str):
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        for uploaded in files:
+            pdf_buffer, filename = _txt_single_to_pdf(uploaded)
+            zf.writestr(filename, pdf_buffer.getvalue())
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_txt_ezkito.zip"
+    return mem_zip, zip_name
 
 
-# =========================
-# PDF → Image (pdf2image)
-# =========================
+# ============================================================
+# PDF → Image helpers (pdf2image)
+# ============================================================
+def _pdfs_to_images_zip(files: List, to_format: str, base_name: str):
+    if convert_from_bytes is None:
+        raise RuntimeError("pdf2image is not installed.")
 
-def _pdfs_to_images_zip(files, to_ext: str, base_prefix: str):
-    """
-    Convert one or more PDFs to images (one image per page),
-    and return a ZIP file containing all generated images.
-    """
-    try:
-        from pdf2image import convert_from_bytes
-    except ImportError:
-        raise RuntimeError(
-            "pdf2image is required for PDF → image conversion. "
-            "Install it with 'pip install pdf2image' and make sure poppler is installed."
-        )
-
-    zip_buffer = io.BytesIO()
-
-    format_map = {
-        "jpg": "JPEG",
-        "jpeg": "JPEG",
-        "png": "PNG",
-    }
-    pil_format = format_map.get(to_ext, to_ext.upper())
-
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for f in files:
-            pdf_bytes = f.read()
-            images = convert_from_bytes(pdf_bytes)
-
-            base_name = f.name.rsplit(".", 1)[0]
-            for page_num, img in enumerate(images, start=1):
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        for uploaded in files:
+            pdf_bytes = uploaded.read()
+            pages = convert_from_bytes(pdf_bytes)
+            doc_base = uploaded.name.rsplit(".", 1)[0]
+            for idx, page in enumerate(pages, start=1):
                 img_buffer = io.BytesIO()
-                img.save(img_buffer, format=pil_format)
+                page.save(img_buffer, format=to_format.upper())
                 img_buffer.seek(0)
+                out_name = f"{doc_base}_page{idx}_ezkito.{to_format}"
+                zf.writestr(out_name, img_buffer.getvalue())
 
-                out_name = f"{base_name}_page{page_num}_ezkito.{to_ext}"
-                zip_file.writestr(out_name, img_buffer.read())
-
-    zip_buffer.seek(0)
-    zip_name = f"{base_prefix}_converted_ezkito.zip"
-    return zip_buffer, zip_name
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_images_ezkito.zip"
+    return mem_zip, zip_name
 
 
-# =========================
-# Landing pages (SEO / Marketing)
-# =========================
+# ============================================================
+# Video / Audio helpers (ffmpeg)
+# ============================================================
+def _check_ffmpeg_available():
+    try:
+        subprocess.run(
+            ["ffmpeg", "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+    except Exception:
+        raise RuntimeError("ffmpeg is not installed or not found in PATH.")
 
-def _render_landing(request, title, description, from_default, to_default):
-    """
-    공용 랜딩 템플릿 렌더링 헬퍼.
-    from_default / to_default 는 랜딩에서 변환 페이지로 넘어갈 때 기본값으로 사용.
-    """
-    return render(
-        request,
-        "convert/landing_base.html",
-        {
-            "title": title,
-            "description": description,
-            "from_default": from_default,
-            "to_default": to_default,
-        },
+
+def _handle_video_to_audio(request, files: List, from_format: str, to_format: str, base_name: str) -> HttpResponse:
+    _check_ffmpeg_available()
+
+    # Single file → single audio
+    if len(files) == 1:
+        uploaded = files[0]
+        with tempfile.TemporaryDirectory(prefix="ezkito_va_") as tmpdir:
+            in_path = os.path.join(tmpdir, uploaded.name)
+            with open(in_path, "wb") as f:
+                for chunk in uploaded.chunks():
+                    f.write(chunk)
+
+            out_base = uploaded.name.rsplit(".", 1)[0]
+            out_name = f"{out_base}_ezkito.{to_format}"
+            out_path = os.path.join(tmpdir, out_name)
+
+            cmd = ["ffmpeg", "-y", "-i", in_path, out_path]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            with open(out_path, "rb") as f:
+                data = f.read()
+            buffer = io.BytesIO(data)
+            buffer.seek(0)
+
+            if to_format == "mp3":
+                mime = "audio/mpeg"
+            elif to_format == "wav":
+                mime = "audio/wav"
+            else:
+                mime = "audio/octet-stream"
+
+            return FileResponse(
+                buffer,
+                as_attachment=True,
+                filename=out_name,
+                content_type=mime,
+            )
+
+    # Multiple files → ZIP
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf, tempfile.TemporaryDirectory(prefix="ezkito_va_zip_") as tmpdir:
+        for uploaded in files:
+            in_path = os.path.join(tmpdir, uploaded.name)
+            with open(in_path, "wb") as f:
+                for chunk in uploaded.chunks():
+                    f.write(chunk)
+
+            out_base = uploaded.name.rsplit(".", 1)[0]
+            out_name = f"{out_base}_ezkito.{to_format}"
+            out_path = os.path.join(tmpdir, out_name)
+
+            cmd = ["ffmpeg", "-y", "-i", in_path, out_path]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            with open(out_path, "rb") as f:
+                zf.writestr(out_name, f.read())
+
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_audio_ezkito.zip"
+    return FileResponse(
+        mem_zip,
+        as_attachment=True,
+        filename=zip_name,
+        content_type="application/zip",
     )
 
 
+def _handle_audio_to_video(request, files: List, from_format: str, to_format: str, base_name: str) -> HttpResponse:
+    _check_ffmpeg_available()
+
+    # we will create a simple solid-color background image (1280x720)
+    def create_bg_image(path: str):
+        img = Image.new("RGB", (1280, 720), (0, 123, 255))  # EzKito blue-ish
+        img.save(path, format="PNG")
+
+    if len(files) == 1:
+        uploaded = files[0]
+        with tempfile.TemporaryDirectory(prefix="ezkito_av_") as tmpdir:
+            bg_path = os.path.join(tmpdir, "bg.png")
+            create_bg_image(bg_path)
+
+            in_path = os.path.join(tmpdir, uploaded.name)
+            with open(in_path, "wb") as f:
+                for chunk in uploaded.chunks():
+                    f.write(chunk)
+
+            out_base = uploaded.name.rsplit(".", 1)[0]
+            out_name = f"{out_base}_ezkito.{to_format}"
+            out_path = os.path.join(tmpdir, out_name)
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-loop", "1",
+                "-i", bg_path,
+                "-i", in_path,
+                "-shortest",
+                "-c:v", "libx264",
+                "-c:a", "aac",
+                "-pix_fmt", "yuv420p",
+                out_path,
+            ]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            with open(out_path, "rb") as f:
+                data = f.read()
+            buffer = io.BytesIO(data)
+            buffer.seek(0)
+
+            mime = "video/mp4"  # currently only mp4 as target
+            return FileResponse(
+                buffer,
+                as_attachment=True,
+                filename=out_name,
+                content_type=mime,
+            )
+
+    # Multiple audios → multiple MP4s in a ZIP
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED) as zf, tempfile.TemporaryDirectory(prefix="ezkito_av_zip_") as tmpdir:
+        bg_path = os.path.join(tmpdir, "bg.png")
+        create_bg_image(bg_path)
+
+        for uploaded in files:
+            in_path = os.path.join(tmpdir, uploaded.name)
+            with open(in_path, "wb") as f:
+                for chunk in uploaded.chunks():
+                    f.write(chunk)
+
+            out_base = uploaded.name.rsplit(".", 1)[0]
+            out_name = f"{out_base}_ezkito.{to_format}"
+            out_path = os.path.join(tmpdir, out_name)
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-loop", "1",
+                "-i", bg_path,
+                "-i", in_path,
+                "-shortest",
+                "-c:v", "libx264",
+                "-c:a", "aac",
+                "-pix_fmt", "yuv420p",
+                out_path,
+            ]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            with open(out_path, "rb") as f:
+                zf.writestr(out_name, f.read())
+
+    mem_zip.seek(0)
+    zip_name = f"{base_name}_video_ezkito.zip"
+    return FileResponse(
+        mem_zip,
+        as_attachment=True,
+        filename=zip_name,
+        content_type="application/zip",
+    )
+
+
+# ============================================================
+# Landing pages (SEO-friendly URLs)
+# ============================================================
 def landing_png_to_pdf(request):
     return _render_landing(
         request,
-        title="Convert PNG to PDF Online — Free & Fast | EzKito",
-        description="Convert PNG images to PDF instantly with EzKito. Free, fast, and no signup required.",
+        title="Convert PNG to PDF — Online Image to PDF | EzKito",
+        description="Convert PNG images to PDF instantly. Fast, secure, and easy to use.",
         from_default="png",
         to_default="pdf",
     )
@@ -620,8 +738,8 @@ def landing_png_to_pdf(request):
 def landing_jpg_to_pdf(request):
     return _render_landing(
         request,
-        title="Convert JPG to PDF Online — Easy & Free | EzKito",
-        description="Turn JPG images into high-quality PDF files in seconds. 100% free and privacy-friendly.",
+        title="Convert JPG to PDF — Online Image to PDF | EzKito",
+        description="Convert JPG images to PDF instantly. Fast, secure, and easy to use.",
         from_default="jpg",
         to_default="pdf",
     )
@@ -630,7 +748,7 @@ def landing_jpg_to_pdf(request):
 def landing_pdf_to_jpg(request):
     return _render_landing(
         request,
-        title="Convert PDF to JPG — Extract Images Easily | EzKito",
+        title="Convert PDF to JPG — Extract Images from PDF | EzKito",
         description="Extract JPG images from any PDF document instantly. Fast, secure, and no account required.",
         from_default="pdf",
         to_default="jpg",

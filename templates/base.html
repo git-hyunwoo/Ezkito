@@ -23,6 +23,7 @@
             padding-left: 12px !important;
             padding-right: 12px !important;
             font-size: 1rem;
+            color: #ffffff !important;
         }
 
         .navbar-nav .nav-item {
@@ -32,6 +33,7 @@
         .navbar-brand {
             font-size: 1.35rem;
             font-weight: bold;
+            color: #ffffff !important;
         }
 
         body {
@@ -40,11 +42,22 @@
 
         /* Page container padding */
         .content-container {
-            padding: 2rem 2.5rem;
+            padding: 24px 32px;
         }
 
-        /* Navigation Text Colors */
-        .navbar-dark .navbar-nav .nav-link {
+        /* Dropdown */
+        .dropdown-menu {
+            min-width: 220px;
+        }
+
+        .dropdown-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        .navbar-dark .navbar-nav .nav-link.active {
+            font-weight: 600;
             color: #ffffff !important;
         }
 
@@ -61,7 +74,6 @@
             background-color: #e9ecef !important;
             color: #000000 !important;
         }
-
     </style>
 
     {% block extra_head %}{% endblock %}
@@ -78,115 +90,197 @@
             Ezkito
         </a>
 
-        <!-- Mobile menu button -->
+        <!-- Toggler -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown"
                 aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Navigation Menus -->
+        <!-- Menus -->
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav ms-3">
 
-                <!-- File Menu -->
+                <!-- ================== Convert Menu ================== -->
                 <li class="nav-item dropdown me-4">
-                    <a class="nav-link dropdown-toggle" href="#" id="convertDropdown"
-                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#"
+                       id="convertDropdown"
+                       role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
                         Convert
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="convertDropdown">
 
                         <!-- Image ↔ Image -->
                         <li><h6 class="dropdown-header">Image ↔ Image</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'jpg' %}">PNG → JPG</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'jpeg' %}">PNG → JPEG</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpg' 'png' %}">JPG → PNG</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpeg' 'png' %}">JPEG → PNG</a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'png' 'jpg' %}">
+                            PNG → JPG
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'png' 'jpeg' %}">
+                            PNG → JPEG
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'jpg' 'png' %}">
+                            JPG → PNG
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'jpeg' 'png' %}">
+                            JPEG → PNG
+                        </a></li>
 
                         <li><hr class="dropdown-divider"></li>
 
                         <!-- Image → PDF -->
                         <li><h6 class="dropdown-header">Image → PDF</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'png' 'pdf' %}">PNG → PDF</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpg' 'pdf' %}">JPG → PDF</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'jpeg' 'pdf' %}">JPEG → PDF</a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'png' 'pdf' %}">
+                            PNG → PDF
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'jpg' 'pdf' %}">
+                            JPG → PDF
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'jpeg' 'pdf' %}">
+                            JPEG → PDF
+                        </a></li>
 
                         <li><hr class="dropdown-divider"></li>
 
                         <!-- Document → PDF -->
                         <li><h6 class="dropdown-header">Document → PDF</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'docx' 'pdf' %}">DOCX → PDF</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pptx' 'pdf' %}">PPTX → PDF</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'xlsx' 'pdf' %}">XLSX → PDF</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'txt' 'pdf' %}">TXT → PDF</a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'docx' 'pdf' %}">
+                            DOCX → PDF
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'pptx' 'pdf' %}">
+                            PPTX → PDF
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'xlsx' 'pdf' %}">
+                            XLSX → PDF
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'txt' 'pdf' %}">
+                            TXT → PDF
+                        </a></li>
 
                         <li><hr class="dropdown-divider"></li>
 
                         <!-- PDF → Image -->
                         <li><h6 class="dropdown-header">PDF → Image</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'png' %}">PDF → PNG</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'jpg' %}">PDF → JPG</a></li>
-                        <li><a class="dropdown-item" href="{% url 'convert:file_converter_fmt' 'pdf' 'jpeg' %}">PDF → JPEG</a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'pdf' 'png' %}">
+                            PDF → PNG
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'pdf' 'jpg' %}">
+                            PDF → JPG
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'pdf' 'jpeg' %}">
+                            PDF → JPEG
+                        </a></li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- Video → Audio -->
+                        <li><h6 class="dropdown-header">Video → Audio</h6></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'mp4' 'mp3' %}">
+                            MP4 → MP3
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'mp4' 'wav' %}">
+                            MP4 → WAV
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'mov' 'mp3' %}">
+                            MOV → MP3
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'avi' 'mp3' %}">
+                            AVI → MP3
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'mkv' 'mp3' %}">
+                            MKV → MP3
+                        </a></li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- Audio → Video -->
+                        <li><h6 class="dropdown-header">Audio → Video</h6></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'mp3' 'mp4' %}">
+                            MP3 → MP4
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'wav' 'mp4' %}">
+                            WAV → MP4
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'm4a' 'mp4' %}">
+                            M4A → MP4
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'aac' 'mp4' %}">
+                            AAC → MP4
+                        </a></li>
+                        <li><a class="dropdown-item"
+                               href="{% url 'convert:file_converter_fmt' 'ogg' 'mp4' %}">
+                            OGG → MP4
+                        </a></li>
 
                     </ul>
                 </li>
+                <!-- =============== END Convert Menu ================= -->
 
-
-                <!-- Empty Menus (for future features) -->
-                <li class="nav-item dropdown me-4">
+                <!-- 나머지 메뉴들은 일단 플레이스홀더로 유지 -->
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="menu2Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu2
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
+                    <ul class="dropdown-menu" aria-labelledby="menu2Dropdown">
+                        <li><a class="dropdown-item" href="#">Submenu 1</a></li>
+                        <li><a class="dropdown-item" href="#">Submenu 2</a></li>
                     </ul>
                 </li>
 
-                <li class="nav-item dropdown me-4">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu3Dropdown"
-                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Menu3
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
-                    </ul>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Menu3</a>
                 </li>
 
-                <li class="nav-item dropdown me-4">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="menu4Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu4
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
+                    <ul class="dropdown-menu" aria-labelledby="menu4Dropdown">
+                        <li><a class="dropdown-item" href="#">Submenu 1</a></li>
                     </ul>
                 </li>
 
-                <li class="nav-item dropdown me-4">
-                    <a class="nav-link dropdown-toggle" href="#" id="menu5Dropdown"
-                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Menu5
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
-                    </ul>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Menu5</a>
                 </li>
 
-                <li class="nav-item dropdown me-4">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="menu6Dropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Menu6
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Coming Soon</a></li>
+                    <ul class="dropdown-menu" aria-labelledby="menu6Dropdown">
+                        <li><a class="dropdown-item" href="#">Submenu 1</a></li>
                     </ul>
                 </li>
 
             </ul>
         </div>
-
     </div>
 </nav>
 <!-- =============== END HEADER ================= -->
