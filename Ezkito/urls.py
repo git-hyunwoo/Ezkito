@@ -17,8 +17,27 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+"""
+[urls.py] file is the first step of making every functions of this project
+
+app explanation
+    1. Ezkito
+        - Ezkito is the root app of this whole project
+        - every single move or functions start from here 
+    2. core
+        - core is the app represents main page
+    3. convert
+        - convert is the app represents do functions for converting files
+          such as image, text, pdf, video, etc files
+    4. imagetools
+        - imagetools is the app for editing image files such as resizing, removing background,
+          applying background colors,  file compressions
+"""
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
     path("convert/", include("convert.urls")),
+    # ✅ imagetools (namespace 등록 핵심)
+    path("image/", include(("imagetools.urls", "imagetools"), namespace="imagetools")),
 ]

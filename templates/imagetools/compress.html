@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1 class="mb-3">Compress Image</h1>
+  <p class="text-muted">
+    Reduce image file size. JPG uses quality, PNG uses optimization.
+  </p>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="card p-4">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label class="form-label">Files</label>
+      <input type="file" name="files" class="form-control" multiple required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">JPEG Quality (1–95)</label>
+      <input type="number" name="quality" class="form-control" value="75">
+    </div>
+
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary">Compress</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

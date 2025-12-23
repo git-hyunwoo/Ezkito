@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+  .dropzone {
+    border: 2px dashed rgba(13,110,253,.35);
+    border-radius: 14px;
+    padding: 18px;
+    cursor: pointer;
+    transition: .15s ease-in-out;
+    background: #fff;
+  }
+  .dropzone:hover {
+    border-color: rgba(13,110,253,.65);
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.06);
+  }
+  .dropzone.dragover {
+    border-color: rgba(13,110,253,.95);
+    background: rgba(13,110,253,.03);
+  }
+  .thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid rgba(0,0,0,.08);
+    background: #fff;
+  }
+  .preview-box {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .preview-img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: #f8f9fa;
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  .hint-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .85rem;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    background: rgba(13,110,253,.08);
+    color: #0b5ed7;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-end justify-content-between gap-3 flex-wrap">
+    <div>
+      <h1 class="mb-2">Resize Image</h1>
+      <p class="text-muted mb-0">
+        Upload one or more images. Multiple files will be downloaded as a ZIP.
+      </p>
+    </div>
+    <span class="hint-pill">🖼️ Preview uses the first image (for estimation)</span>
+  </div>
+
+  {% if error_message %}
+    <div class="alert alert-danger mt-3">{{ error_message }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="mt-4">
+    {% csrf_token %}
+
+    <div class="row g-4">
+      <!-- LEFT -->
+      <div class="col-lg-7">
+        <div class="card p-4">
+          <!-- Files -->
+          <div class="mb-4">
+            <label class="form-label">Files</label>
+            <input id="fileInput" type="file" name="files" class="d-none" multiple required accept="image/*">
+
+            <div id="dropzone" class="dropzone">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="fw-semibold">Drag &amp; drop images here</div>
+                  <div class="text-muted small">or click to choose files</div>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="chooseBtn">
+                  Choose files
+                </button>
+              </div>
+
+              <div class="mt-3 d-flex flex-wrap gap-2" id="thumbs" style="display:none;"></div>
+              <div class="mt-2 small text-muted" id="fileSummary"></div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <!-- ✅ FIXED ALIGNMENT: Mode(왼쪽) + 옵션(오른쪽) 한 줄 고정 -->
+          <div class="row g-3 align-items-start">
+            <!-- Mode -->
+            <div class="col-md-4">
+              <label class="form-label">Mode</label>
+              <select name="mode" id="mode" class="form-select">
+                <option value="wh">Width / Height</option>
+                <option value="percent">Percentage</option>
+              </select>
+            </div>
+
+            <!-- Right column (single) -->
+            <div class="col-md-8">
+              <!-- Width/Height -->
+              <div id="whBox">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Width (px)</label>
+                    <input id="width" type="number" name="width" class="form-control"
+                           placeholder="e.g. 800" min="1">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Height (px)</label>
+                    <input id="height" type="number" name="height" class="form-control"
+                           placeholder="e.g. 600" min="1">
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="keep_ratio"
+                           id="keepRatio" checked>
+                    <label class="form-check-label" for="keepRatio">Keep aspect ratio</label>
+                  </div>
+                  <div class="small text-muted">
+                    Tip: with ratio on, fill <b>one</b> side to auto-calc the other.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Percentage -->
+              <div id="percentBox" style="display:none;">
+                <label class="form-label">Percentage (%)</label>
+                <div class="input-group">
+                  <input id="percent" type="number" name="percent" class="form-control"
+                         value="50" min="1" max="1000">
+                  <span class="input-group-text">%</span>
+                </div>
+                <div class="small text-muted mt-1">
+                  Example: 50 means half size, 200 means double.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+              Resize
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="col-lg-5">
+        <div class="preview-box">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="fw-semibold">Preview</div>
+            <button type="button" class="btn btn-sm btn-light" id="clearBtn" disabled>Clear</button>
+          </div>
+
+          <div class="mt-3">
+            <img id="mainPreview" class="preview-img" alt="Preview" style="display:none;">
+            <div id="emptyPreview" class="text-muted small py-5 text-center">
+              Select images to see a preview here.
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="small text-muted">Original</div>
+                <div class="fw-semibold" id="origInfo">-</div>
+              </div>
+              <div class="col-6">
+                <div class="small text-muted">After resize (est.)</div>
+                <div class="fw-semibold" id="newInfo">-</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-warning mt-3 mb-0 small">
+            This preview is for UI convenience. The actual output is generated on the server.
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Elements
+  const fileInput = document.getElementById("fileInput");
+  const dropzone = document.getElementById("dropzone");
+  const chooseBtn = document.getElementById("chooseBtn");
+  const thumbs = document.getElementById("thumbs");
+  const fileSummary = document.getElementById("fileSummary");
+
+  const mode = document.getElementById("mode");
+  const whBox = document.getElementById("whBox");
+  const percentBox = document.getElementById("percentBox");
+
+  const widthInput = document.getElementById("width");
+  const heightInput = document.getElementById("height");
+  const percentInput = document.getElementById("percent");
+  const keepRatio = document.getElementById("keepRatio");
+
+  const mainPreview = document.getElementById("mainPreview");
+  const emptyPreview = document.getElementById("emptyPreview");
+  const origInfo = document.getElementById("origInfo");
+  const newInfo = document.getElementById("newInfo");
+
+  const submitBtn = document.getElementById("submitBtn");
+  const clearBtn = document.getElementById("clearBtn");
+
+  // State
+  let objectUrls = [];
+  let originalW = null;
+  let originalH = null;
+  let isSyncing = false;
+
+  function revokeAllObjectUrls() {
+    objectUrls.forEach(u => URL.revokeObjectURL(u));
+    objectUrls = [];
+  }
+
+  function bytesToHuman(bytes) {
+    if (!bytes && bytes !== 0) return "-";
+    const units = ["B","KB","MB","GB"];
+    let i = 0;
+    let v = bytes;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  function setModeUI() {
+    if (mode.value === "percent") {
+      whBox.style.display = "none";
+      percentBox.style.display = "block";
+    } else {
+      whBox.style.display = "block";
+      percentBox.style.display = "none";
+    }
+    updateEstimation();
+  }
+
+  function computeNewSize() {
+    if (!originalW || !originalH) return null;
+
+    if (mode.value === "percent") {
+      const p = parseInt(percentInput.value || "0", 10);
+      if (!p || p <= 0) return null;
+      return {
+        w: Math.max(1, Math.round(originalW * p / 100)),
+        h: Math.max(1, Math.round(originalH * p / 100)),
+      };
+    }
+
+    const w = parseInt(widthInput.value || "0", 10);
+    const h = parseInt(heightInput.value || "0", 10);
+    if ((!w || w <= 0) && (!h || h <= 0)) return null;
+
+    if (keepRatio.checked) {
+      if (w > 0 && (!h || h <= 0)) return { w, h: Math.max(1, Math.round(originalH * (w / originalW))) };
+      if (h > 0 && (!w || w <= 0)) return { w: Math.max(1, Math.round(originalW * (h / originalH))), h };
+      return { w: w > 0 ? w : originalW, h: h > 0 ? h : originalH };
+    }
+
+    return { w: w > 0 ? w : originalW, h: h > 0 ? h : originalH };
+  }
+
+  function updateEstimation() {
+    const est = computeNewSize();
+    if (!originalW || !originalH) {
+      origInfo.textContent = "-";
+      newInfo.textContent = "-";
+      submitBtn.disabled = (fileInput.files.length === 0);
+      return;
+    }
+
+    origInfo.textContent = `${originalW} × ${originalH}px`;
+
+    if (!est) {
+      newInfo.textContent = "-";
+      submitBtn.disabled = true;
+      return;
+    }
+
+    newInfo.textContent = `${est.w} × ${est.h}px`;
+    submitBtn.disabled = (fileInput.files.length === 0);
+  }
+
+  function renderThumbs(files) {
+    thumbs.innerHTML = "";
+    if (!files || files.length === 0) {
+      thumbs.style.display = "none";
+      fileSummary.textContent = "";
+      return;
+    }
+
+    thumbs.style.display = "flex";
+
+    const totalBytes = Array.from(files).reduce((acc, f) => acc + (f.size || 0), 0);
+    fileSummary.textContent = `${files.length} file(s) • ${bytesToHuman(totalBytes)}`;
+
+    const maxThumbs = 10;
+    const shown = Array.from(files).slice(0, maxThumbs);
+
+    shown.forEach((f, idx) => {
+      const url = URL.createObjectURL(f);
+      objectUrls.push(url);
+
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.src = url;
+      img.alt = f.name;
+      img.title = f.name;
+
+      img.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMainPreview(idx);
+      });
+
+      thumbs.appendChild(img);
+    });
+
+    if (files.length > maxThumbs) {
+      const more = document.createElement("div");
+      more.className = "small text-muted align-self-center ms-1";
+      more.textContent = `+${files.length - maxThumbs} more`;
+      thumbs.appendChild(more);
+    }
+  }
+
+  function setMainPreview(index) {
+    const files = fileInput.files;
+    if (!files || files.length === 0) return;
+
+    const f = files[index] || files[0];
+    const url = URL.createObjectURL(f);
+    objectUrls.push(url);
+
+    mainPreview.src = url;
+    mainPreview.style.display = "block";
+    emptyPreview.style.display = "none";
+
+    const img = new Image();
+    img.onload = function () {
+      originalW = img.naturalWidth;
+      originalH = img.naturalHeight;
+      clearBtn.disabled = false;
+      updateEstimation();
+    };
+    img.src = url;
+  }
+
+  function clearAll() {
+    revokeAllObjectUrls();
+    fileInput.value = "";
+    originalW = null;
+    originalH = null;
+
+    thumbs.innerHTML = "";
+    thumbs.style.display = "none";
+    fileSummary.textContent = "";
+
+    mainPreview.removeAttribute("src");
+    mainPreview.style.display = "none";
+    emptyPreview.style.display = "block";
+
+    origInfo.textContent = "-";
+    newInfo.textContent = "-";
+
+    submitBtn.disabled = true;
+    clearBtn.disabled = true;
+  }
+
+  function syncOtherSide(changed) {
+    if (!keepRatio.checked) return;
+    if (!originalW || !originalH) return;
+    if (mode.value !== "wh") return;
+    if (isSyncing) return;
+
+    isSyncing = true;
+    try {
+      const w = parseInt(widthInput.value || "0", 10);
+      const h = parseInt(heightInput.value || "0", 10);
+
+      if (changed === "w" && w > 0) {
+        if (!h || h <= 0) heightInput.value = Math.max(1, Math.round(originalH * (w / originalW)));
+      } else if (changed === "h" && h > 0) {
+        if (!w || w <= 0) widthInput.value = Math.max(1, Math.round(originalW * (h / originalH)));
+      }
+    } finally {
+      isSyncing = false;
+    }
+  }
+
+  // Events
+  chooseBtn.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("click", (e) => {
+    if (e.target === chooseBtn) return;
+    fileInput.click();
+  });
+
+  ["dragenter", "dragover"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add("dragover");
+    });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("dragover");
+    });
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    if (!dt || !dt.files || dt.files.length === 0) return;
+    fileInput.files = dt.files;
+    handleFilesChanged();
+  });
+
+  function handleFilesChanged() {
+    revokeAllObjectUrls();
+    renderThumbs(fileInput.files);
+
+    if (fileInput.files.length > 0) {
+      setMainPreview(0);
+      submitBtn.disabled = false;
+    } else {
+      clearAll();
+    }
+  }
+
+  fileInput.addEventListener("change", handleFilesChanged);
+
+  mode.addEventListener("change", setModeUI);
+  keepRatio.addEventListener("change", () => {
+    syncOtherSide(widthInput.value ? "w" : "h");
+    updateEstimation();
+  });
+
+  widthInput.addEventListener("input", () => { syncOtherSide("w"); updateEstimation(); });
+  heightInput.addEventListener("input", () => { syncOtherSide("h"); updateEstimation(); });
+  percentInput.addEventListener("input", updateEstimation);
+
+  clearBtn.addEventListener("click", clearAll);
+
+  // Init
+  setModeUI();
+  updateEstimation();
+</script>
+{% endblock %}

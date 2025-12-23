@@ -76,7 +76,7 @@ AUDIO_FORMATS = {"mp3", "wav", "m4a", "aac", "ogg"}
 # ============================================================
 # Main converter view
 # ============================================================
-def file_converter(request: HttpRequest, from_fmt: str | None = None, to_fmt: str | None = None) -> HttpResponse:
+def file_converter(request: HttpRequest, from_fmt: str | None = None, to_fmt: str | None = None) -> HttpResponse | FileResponse:
     """
     Main file converter view.
 

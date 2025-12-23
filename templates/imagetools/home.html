@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h1 class="mb-3">Edit Image</h1>
+  <p class="text-muted">
+    Resize, remove background, add background color, compress, crop, and rotate images easily.
+  </p>
+
+  <div class="row g-3 mt-4">
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:resize' %}">
+        <div class="card-body">
+          <h5 class="card-title">Resize</h5>
+          <p class="card-text text-muted">Change image size while keeping aspect ratio</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:bg_remove' %}">
+        <div class="card-body">
+          <h5 class="card-title">Background Remove</h5>
+          <p class="card-text text-muted">Remove background and export as transparent PNG</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:bg_color' %}">
+        <div class="card-body">
+          <h5 class="card-title">Add Background Color</h5>
+          <p class="card-text text-muted">Fill transparent background with a solid color</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:compress' %}">
+        <div class="card-body">
+          <h5 class="card-title">Compress</h5>
+          <p class="card-text text-muted">Reduce image file size</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:crop' %}">
+        <div class="card-body">
+          <h5 class="card-title">Crop</h5>
+          <p class="card-text text-muted">Crop a specific area of the image</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a class="card h-100 text-decoration-none" href="{% url 'edit_image:rotate' %}">
+        <div class="card-body">
+          <h5 class="card-title">Rotate / Flip</h5>
+          <p class="card-text text-muted">Rotate or flip images</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

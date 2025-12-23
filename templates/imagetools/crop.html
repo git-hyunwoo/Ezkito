@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="mb-1">Crop Image</h1>
+      <p class="text-muted mb-0">Drag to crop visually. Click Download to export the current crop.</p>
+    </div>
+  </div>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left: input + small controls -->
+    <div class="col-lg-5">
+      <div class="card p-4">
+        <div class="mb-3">
+          <label class="form-label">File (single)</label>
+          <input id="cropFile" type="file" class="form-control" accept="image/*" required>
+          <div class="form-text">If the preview is blank, try PNG/JPG.</div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-outline-secondary" id="cropReset" disabled>Reset</button>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3 mb-0">
+        Tip: Resize corners, drag to move, scroll to zoom.
+      </div>
+    </div>
+
+    <!-- Right: live crop + single Download button -->
+    <div class="col-lg-7">
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0">Live Crop</h5>
+          <small id="cropMeta" class="text-muted">No image selected</small>
+        </div>
+
+        <div class="crop-stage">
+          <img id="cropPreview" alt="crop preview">
+          <div class="empty-state" id="cropEmpty">Select an image to start cropping</div>
+
+          <div class="loading-overlay" id="cropLoading">
+            <div class="shimmer"></div>
+            <div class="loading-text">Generating file…</div>
+          </div>
+        </div>
+
+        <div class="mt-3 d-flex justify-content-end">
+          <button id="cropDownloadBtn" class="btn btn-primary" disabled>
+            Download
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cropper.js (CDN) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+
+<style>
+  .crop-stage{
+    position: relative;
+    width: 100%;
+    height: 520px;
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f6f6f6;
+  }
+  .crop-stage img{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .empty-state{
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(0,0,0,.45);
+    font-weight: 600;
+    pointer-events: none;
+  }
+  .loading-overlay{
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(3px);
+  }
+  .loading-text{ font-weight: 700; }
+  .shimmer{
+    width: 80%;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite linear;
+  }
+  @keyframes shimmer{
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+
+<script>
+  // --- CSRF helper (Django cookie) ---
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  const fileInput = document.getElementById("cropFile");
+  const img = document.getElementById("cropPreview");
+  const empty = document.getElementById("cropEmpty");
+  const meta = document.getElementById("cropMeta");
+
+  const resetBtn = document.getElementById("cropReset");
+  const downloadBtn = document.getElementById("cropDownloadBtn");
+  const loading = document.getElementById("cropLoading");
+
+  let cropper = null;
+  let imgUrl = null;
+
+  function destroyCropper() {
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+  }
+
+  function updateMeta(prefix = "Crop") {
+    if (!cropper) return;
+    const d = cropper.getData(true);
+    meta.textContent = `${prefix}: x=${Math.round(d.x)}, y=${Math.round(d.y)}, w=${Math.round(d.width)}, h=${Math.round(d.height)}`;
+  }
+
+  fileInput.addEventListener("change", () => {
+    destroyCropper();
+    if (imgUrl) URL.revokeObjectURL(imgUrl);
+    imgUrl = null;
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+      empty.style.display = "grid";
+      meta.textContent = "No image selected";
+      resetBtn.disabled = true;
+      downloadBtn.disabled = true;
+      return;
+    }
+
+    const f = fileInput.files[0];
+    imgUrl = URL.createObjectURL(f);
+
+    img.onload = () => {
+      empty.style.display = "none";
+
+      destroyCropper();
+      cropper = new Cropper(img, {
+        viewMode: 1,
+        autoCropArea: 0.8,
+        responsive: true,
+        background: false,
+        dragMode: "move",
+        ready() {
+          meta.textContent = `Loaded: ${f.name} (${Math.round(f.size / 1024)} KB)`;
+        },
+        cropend() { updateMeta("Crop"); },
+        zoom() { updateMeta("Crop"); }
+      });
+
+      resetBtn.disabled = false;
+      downloadBtn.disabled = false;
+    };
+
+    img.onerror = () => {
+      empty.style.display = "grid";
+      meta.textContent = "Failed to preview this image format. Try PNG/JPG.";
+      resetBtn.disabled = true;
+      downloadBtn.disabled = true;
+      destroyCropper();
+    };
+
+    img.src = imgUrl;
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!cropper) return;
+    cropper.reset();
+    updateMeta("Reset");
+  });
+
+  downloadBtn.addEventListener("click", async () => {
+    if (!cropper || !fileInput.files || fileInput.files.length === 0) return;
+
+    const f = fileInput.files[0];
+    const d = cropper.getData(true);
+
+    const fd = new FormData();
+    fd.append("file", f);
+    fd.append("x", Math.round(d.x));
+    fd.append("y", Math.round(d.y));
+    fd.append("w", Math.round(d.width));
+    fd.append("h", Math.round(d.height));
+
+    loading.style.display = "flex";
+    downloadBtn.disabled = true;
+
+    try {
+      const resp = await fetch(window.location.href, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: fd
+      });
+
+      if (!resp.ok) throw new Error(resp.status);
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+
+      const base = f.name.replace(/\.[^/.]+$/, "");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${base}_cropped.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+      meta.textContent = "Downloaded ✅";
+    } catch (err) {
+      console.error(err);
+      meta.textContent = "Failed ❌";
+      alert("Crop failed. Check server logs.");
+    } finally {
+      loading.style.display = "none";
+      downloadBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

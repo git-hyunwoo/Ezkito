@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="mb-1">Remove Background</h1>
+      <p class="text-muted mb-0">Preview the result with a smooth processing animation.</p>
+    </div>
+  </div>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left: Input -->
+    <div class="col-lg-5">
+      <div class="card p-4">
+        <form id="bgForm" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Files (multiple allowed)</label>
+            <input id="bgFiles" type="file" name="files" class="form-control" accept="image/*" multiple required>
+            <div class="form-text">Tip: Single file shows live preview. Multiple files will download as ZIP.</div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <button id="bgBtn" type="submit" class="btn btn-primary">
+              Remove Background
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="alert alert-info mt-3 mb-0">
+        If you uploaded multiple files, the server returns a ZIP (no live preview).
+      </div>
+    </div>
+
+    <!-- Right: Preview -->
+    <div class="col-lg-7">
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0">Preview</h5>
+          <small id="bgStatus" class="text-muted">Waiting for file…</small>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="preview-box">
+              <div class="preview-title">Original</div>
+              <div class="preview-area" id="bgOriginalArea">
+                <img id="bgOriginalImg" alt="original preview" />
+                <div class="empty-state" id="bgOriginalEmpty">No image selected</div>
+
+                <!-- Loading overlay -->
+                <div class="loading-overlay" id="bgLoading">
+                  <div class="shimmer"></div>
+                  <div class="loading-text">
+                    Removing background…
+                    <div class="small text-muted">This may take a few seconds</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="preview-box">
+              <div class="preview-title">Result</div>
+              <div class="preview-area">
+                <img id="bgResultImg" alt="result preview" />
+                <div class="empty-state" id="bgResultEmpty">Result will appear here</div>
+              </div>
+
+              <div class="d-flex gap-2 justify-content-end mt-3">
+                <a id="bgDownload" class="btn btn-outline-primary disabled" href="#" download="nobg.png">
+                  Download PNG
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .preview-box { }
+  .preview-title { font-weight: 600; margin-bottom: .5rem; }
+  .preview-area{
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: 12px;
+    overflow: hidden;
+    background:
+      linear-gradient(45deg, #f2f2f2 25%, transparent 25%),
+      linear-gradient(-45deg, #f2f2f2 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #f2f2f2 75%),
+      linear-gradient(-45deg, transparent 75%, #f2f2f2 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+  }
+  .preview-area img{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    background: transparent;
+  }
+  .empty-state{
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(0,0,0,.45);
+    font-weight: 600;
+  }
+
+  .loading-overlay{
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(255,255,255,.55);
+    backdrop-filter: blur(3px);
+  }
+  .loading-text{ font-weight: 700; }
+  .shimmer{
+    width: 80%;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite linear;
+  }
+  @keyframes shimmer{
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+
+<script>
+  // --- CSRF helper (Django cookie) ---
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  const input = document.getElementById("bgFiles");
+  const form = document.getElementById("bgForm");
+  const statusEl = document.getElementById("bgStatus");
+
+  const originalImg = document.getElementById("bgOriginalImg");
+  const resultImg = document.getElementById("bgResultImg");
+  const originalEmpty = document.getElementById("bgOriginalEmpty");
+  const resultEmpty = document.getElementById("bgResultEmpty");
+
+  const loading = document.getElementById("bgLoading");
+  const downloadBtn = document.getElementById("bgDownload");
+  const btn = document.getElementById("bgBtn");
+
+  let originalUrl = null;
+  let resultUrl = null;
+
+  function setImg(imgEl, emptyEl, url) {
+    if (url) {
+      imgEl.src = url;
+      imgEl.style.display = "block";
+      emptyEl.style.display = "none";
+    } else {
+      imgEl.removeAttribute("src");
+      imgEl.style.display = "none";
+      emptyEl.style.display = "grid";
+    }
+  }
+
+  input.addEventListener("change", () => {
+    // reset
+    if (originalUrl) URL.revokeObjectURL(originalUrl);
+    if (resultUrl) URL.revokeObjectURL(resultUrl);
+    originalUrl = null;
+    resultUrl = null;
+
+    downloadBtn.classList.add("disabled");
+    downloadBtn.href = "#";
+    setImg(resultImg, resultEmpty, null);
+
+    if (!input.files || input.files.length === 0) {
+      statusEl.textContent = "Waiting for file…";
+      setImg(originalImg, originalEmpty, null);
+      return;
+    }
+
+    if (input.files.length === 1) {
+      originalUrl = URL.createObjectURL(input.files[0]);
+      setImg(originalImg, originalEmpty, originalUrl);
+      statusEl.textContent = "Ready to remove background";
+    } else {
+      // multiple: no preview animation target; still show first image preview for convenience
+      originalUrl = URL.createObjectURL(input.files[0]);
+      setImg(originalImg, originalEmpty, originalUrl);
+      statusEl.textContent = `Ready (${input.files.length} files → ZIP)`;
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!input.files || input.files.length === 0) return;
+
+    // multiple files -> let browser do normal submit (download ZIP)
+    if (input.files.length > 1) {
+      statusEl.textContent = "Processing multiple files…";
+      form.submit();
+      return;
+    }
+
+    // single file -> AJAX for live preview
+    statusEl.textContent = "Processing…";
+    loading.style.display = "flex";
+    btn.disabled = true;
+
+    const fd = new FormData();
+    fd.append("files", input.files[0]);
+
+    try {
+      const resp = await fetch(window.location.href, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: fd
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Server responded with ${resp.status}`);
+      }
+
+      const blob = await resp.blob();
+      if (resultUrl) URL.revokeObjectURL(resultUrl);
+      resultUrl = URL.createObjectURL(blob);
+
+      setImg(resultImg, resultEmpty, resultUrl);
+      statusEl.textContent = "Done ✅";
+      loading.style.display = "none";
+
+      downloadBtn.classList.remove("disabled");
+      downloadBtn.href = resultUrl;
+
+      // better default filename
+      const base = input.files[0].name.replace(/\.[^/.]+$/, "");
+      downloadBtn.download = `${base}_nobg.png`;
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Failed ❌";
+      loading.style.display = "none";
+      alert("Background removal failed. Check server logs.");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

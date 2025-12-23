@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="mb-1">Rotate / Flip Image</h1>
+      <p class="text-muted mb-0">Preview changes instantly. Download the processed image when ready.</p>
+    </div>
+  </div>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left: controls -->
+    <div class="col-lg-5">
+      <div class="card p-4">
+        <div class="mb-3">
+          <label class="form-label">File (single)</label>
+          <input id="rotFile" type="file" class="form-control" accept="image/*" required>
+          <div class="form-text">Works best with PNG/JPG.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Actions</label>
+          <div class="d-grid gap-2">
+            <div class="btn-group" role="group" aria-label="Rotate actions">
+              <button type="button" class="btn btn-outline-primary" data-action="rotate90" disabled>Rotate 90°</button>
+              <button type="button" class="btn btn-outline-primary" data-action="rotate180" disabled>180°</button>
+              <button type="button" class="btn btn-outline-primary" data-action="rotate270" disabled>270°</button>
+            </div>
+
+            <div class="btn-group" role="group" aria-label="Flip actions">
+              <button type="button" class="btn btn-outline-secondary" data-action="flipH" disabled>Flip Horizontal</button>
+              <button type="button" class="btn btn-outline-secondary" data-action="flipV" disabled>Flip Vertical</button>
+            </div>
+
+            <button type="button" class="btn btn-outline-secondary" id="rotReset" disabled>
+              Reset to Original
+            </button>
+          </div>
+
+          <div class="form-text mt-2">
+            Tip: Apply multiple actions in a row. The preview updates each time.
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <button id="rotDownloadBtn" class="btn btn-primary" disabled>Download</button>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3 mb-0">
+        The preview updates instantly after each action.
+      </div>
+    </div>
+
+    <!-- Right: preview -->
+    <div class="col-lg-7">
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0">Preview</h5>
+          <small id="rotMeta" class="text-muted">No image selected</small>
+        </div>
+
+        <div class="preview-stage">
+          <img id="rotPreview" alt="preview">
+          <div class="empty-state" id="rotEmpty">Select an image to start</div>
+
+          <div class="loading-overlay" id="rotLoading">
+            <div class="shimmer"></div>
+            <div class="loading-text">Applying…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .preview-stage{
+    position: relative;
+    width: 100%;
+    height: 520px;
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f6f6f6;
+  }
+  .preview-stage img{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .empty-state{
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(0,0,0,.45);
+    font-weight: 600;
+    pointer-events: none;
+  }
+  .loading-overlay{
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(3px);
+  }
+  .loading-text{ font-weight: 700; }
+  .shimmer{
+    width: 80%;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite linear;
+  }
+  @keyframes shimmer{
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+
+<script>
+  // --- CSRF helper (Django cookie) ---
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  const fileInput = document.getElementById("rotFile");
+  const previewImg = document.getElementById("rotPreview");
+  const empty = document.getElementById("rotEmpty");
+  const meta = document.getElementById("rotMeta");
+
+  const loading = document.getElementById("rotLoading");
+  const resetBtn = document.getElementById("rotReset");
+  const downloadBtn = document.getElementById("rotDownloadBtn");
+
+  const actionButtons = Array.from(document.querySelectorAll("[data-action]"));
+
+  let originalFile = null;      // File object
+  let currentBlob = null;       // Blob (latest processed image)
+  let currentObjectUrl = null;  // preview url for currentBlob or original
+
+  function revokePreviewUrl() {
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+    }
+  }
+
+  function setPreviewFromBlob(blob) {
+    revokePreviewUrl();
+    currentObjectUrl = URL.createObjectURL(blob);
+    previewImg.src = currentObjectUrl;
+    empty.style.display = "none";
+  }
+
+  function setPreviewFromFile(file) {
+    revokePreviewUrl();
+    currentObjectUrl = URL.createObjectURL(file);
+    previewImg.src = currentObjectUrl;
+    empty.style.display = "none";
+  }
+
+  function setEnabled(enabled) {
+    actionButtons.forEach(btn => btn.disabled = !enabled);
+    resetBtn.disabled = !enabled;
+    downloadBtn.disabled = !enabled;
+  }
+
+  async function applyAction(action) {
+    if (!originalFile) return;
+
+    // Send either the latest processed blob or the original file
+    const source = currentBlob ? new File([currentBlob], originalFile.name, { type: currentBlob.type || originalFile.type }) : originalFile;
+
+    const fd = new FormData();
+    fd.append("file", source);
+    fd.append("action", action);
+
+    loading.style.display = "flex";
+    setEnabled(false);
+
+    try {
+      const resp = await fetch(window.location.href, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: fd
+      });
+
+      if (!resp.ok) throw new Error(resp.status);
+
+      const blob = await resp.blob();
+      currentBlob = blob;
+      setPreviewFromBlob(blob);
+      meta.textContent = `Applied: ${action}`;
+    } catch (err) {
+      console.error(err);
+      alert("Apply failed. Check server logs.");
+      meta.textContent = "Failed ❌";
+    } finally {
+      loading.style.display = "none";
+      setEnabled(true);
+    }
+  }
+
+  fileInput.addEventListener("change", () => {
+    currentBlob = null;
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+      originalFile = null;
+      meta.textContent = "No image selected";
+      empty.style.display = "grid";
+      setEnabled(false);
+      return;
+    }
+
+    originalFile = fileInput.files[0];
+    setPreviewFromFile(originalFile);
+
+    meta.textContent = `Loaded: ${originalFile.name} (${Math.round(originalFile.size / 1024)} KB)`;
+    setEnabled(true);
+  });
+
+  actionButtons.forEach(btn => {
+    btn.addEventListener("click", () => applyAction(btn.dataset.action));
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!originalFile) return;
+    currentBlob = null;
+    setPreviewFromFile(originalFile);
+    meta.textContent = "Reset to original";
+  });
+
+  downloadBtn.addEventListener("click", async () => {
+    if (!originalFile) return;
+
+    // If user never applied anything, download original as-is
+    const blobToDownload = currentBlob || originalFile;
+    const base = originalFile.name.replace(/\.[^/.]+$/, "");
+    const ext = originalFile.name.includes(".") ? originalFile.name.split(".").pop() : "png";
+
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blobToDownload);
+    a.href = url;
+    a.download = currentBlob ? `${base}_edited.${ext}` : originalFile.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // Start disabled
+  setEnabled(false);
+</script>
+{% endblock %}
