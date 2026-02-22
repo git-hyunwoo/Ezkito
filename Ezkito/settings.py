@@ -24,7 +24,13 @@ SECRET_KEY = 'django-insecure-1(you-should-change-this)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'ezkito.onrender.com',
+    'ezkito.com',       # 구입한 도메인 (예: ezkito.com)
+    'www.ezkito.com',   # www 붙은 버전도 추가
+    '127.0.0.1',
+    'localhost'
+]
 
 
 # Application definition
