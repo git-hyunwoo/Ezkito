@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ezkito - Smart Toolkit{% endblock %}
+
+{% block extra_head %}
+<style>
+  .home-hero {
+    background:
+      radial-gradient(1200px 500px at 20% 10%, rgba(13,110,253,.18), transparent 60%),
+      radial-gradient(900px 450px at 90% 20%, rgba(25,135,84,.14), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,1), rgba(248,249,250,1));
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  .hero-title { letter-spacing: -0.02em; line-height: 1.15; }
+  .feature-card {
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 16px;
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    height: 100%;
+  }
+  .feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    border-color: rgba(13,110,253,.25);
+  }
+  .icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,110,253,.08);
+    font-size: 20px;
+  }
+  .mini-stat {
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    padding: 14px;
+    background: #fff;
+  }
+  .soft-muted { color: rgba(0,0,0,.6); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="home-hero py-5">
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-lg-7">
+        <div class="mb-2 text-primary fw-semibold">
+          Efficient Zero-waste Kit Operator
+        </div>
+
+        <h1 class="display-4 fw-bold hero-title mb-3">
+          A smart toolkit that saves your time, <span class="text-primary">Ezkito</span>
+        </h1>
+
+        <p class="lead soft-muted mb-4">
+          Handle file conversion and image editing tasks in one place.
+          No complicated settings — just upload, process, and download.
+        </p>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-primary btn-lg px-4" href="{% url 'convert:file_converter' %}">
+            🚀 Start File Conversion
+          </a>
+          <a class="btn btn-outline-primary btn-lg px-4" href="{% url 'imagetools:compress' %}">
+            🗜️ Compress Images
+          </a>
+          <a class="btn btn-outline-secondary btn-lg px-4" href="{% url 'imagetools:bg_remove' %}">
+            ✂️ Remove Background
+          </a>
+        </div>
+
+        <div class="mt-4 d-flex flex-wrap gap-2 small soft-muted">
+          <span class="badge text-bg-light border">JPG / PNG / PDF</span>
+          <span class="badge text-bg-light border">Multiple files → ZIP</span>
+          <span class="badge text-bg-light border">Fast & Simple</span>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-5">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="mini-stat">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="fw-semibold">Reduce repetitive work</div>
+                  <div class="small soft-muted">Save time before you even start</div>
+                </div>
+                <div class="icon-badge">⚡</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="mini-stat">
+              <div class="fw-semibold">Fast workflow</div>
+              <div class="small soft-muted">Only what you need</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="mini-stat">
+              <div class="fw-semibold">Clean results</div>
+              <div class="small soft-muted">Download-focused UX</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="mini-stat">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="fw-semibold">Image tools suite</div>
+                  <div class="small soft-muted">
+                    Compress · Crop · Resize · Rotate · Background
+                  </div>
+                </div>
+                <div class="icon-badge">🧰</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="py-5">
+  <div class="container">
+    <div class="d-flex align-items-end justify-content-between mb-3">
+      <div>
+        <h2 class="fw-bold mb-1">Get started instantly</h2>
+        <div class="soft-muted">Quick access to the most-used tools.</div>
+      </div>
+      <!--
+      <a class="small text-decoration-none" href="{% url 'imagetools:home' %}">
+        View all image tools →
+      </a>
+      -->
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'convert:file_converter' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">🔁</div>
+              <span class="badge text-bg-primary">Convert</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">File Converter</div>
+            <div class="soft-muted">
+              Convert between PNG, JPG, PDF, DOCX and more.
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'imagetools:compress' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">🗜️</div>
+              <span class="badge text-bg-success">Image</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">Compress Image</div>
+            <div class="soft-muted">
+              Reduce file size while preserving quality.
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'imagetools:bg_remove' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">✂️</div>
+              <span class="badge text-bg-warning">Preview</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">Remove Background</div>
+            <div class="soft-muted">
+              Preview the result for single images.
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'imagetools:crop' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">📐</div>
+              <span class="badge text-bg-light text-dark border">Edit</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">Crop</div>
+            <div class="soft-muted">Trim images to the exact area you want.</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'imagetools:resize' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">↔️</div>
+              <span class="badge text-bg-light text-dark border">Edit</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">Resize</div>
+            <div class="soft-muted">Resize images by pixels or ratio.</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-4">
+        <a class="text-decoration-none text-dark" href="{% url 'imagetools:rotate' %}">
+          <div class="feature-card p-4">
+            <div class="d-flex justify-content-between mb-3">
+              <div class="icon-badge">🔄</div>
+              <span class="badge text-bg-light text-dark border">Edit</span>
+            </div>
+            <div class="fw-semibold fs-5 mb-1">Rotate</div>
+            <div class="soft-muted">Rotate images 90° or 180°.</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="py-5 bg-light border-top border-bottom">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-12 col-lg-6">
+        <h2 class="fw-bold mb-2">How it works</h2>
+        <div class="soft-muted mb-4">
+          Ezkito follows a simple and consistent flow.
+        </div>
+
+        <div class="d-grid gap-3">
+          <div class="mini-stat">
+            <div class="d-flex gap-3">
+              <div class="icon-badge">1</div>
+              <div>
+                <div class="fw-semibold">Upload files</div>
+                <div class="small soft-muted">Select JPG, PNG, PDF and more</div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-stat">
+            <div class="d-flex gap-3">
+              <div class="icon-badge">2</div>
+              <div>
+                <div class="fw-semibold">Choose options</div>
+                <div class="small soft-muted">Only when necessary</div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-stat">
+            <div class="d-flex gap-3">
+              <div class="icon-badge">3</div>
+              <div>
+                <div class="fw-semibold">Download results</div>
+                <div class="small soft-muted">Single file or ZIP</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <a class="btn btn-primary px-4" href="{% url 'imagetools:home' %}">
+            Explore Image Tools
+          </a>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="p-4 bg-white border rounded-4">
+          <div class="fw-semibold mb-2">What’s next</div>
+          <ul class="mb-0 soft-muted">
+            <li>Recently used tools</li>
+            <li>Supported format badges</li>
+            <li>Unified error message UX</li>
+            <li>SEO-focused landing pages</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<section class="py-4">
+  <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="soft-muted small">
+      © {{ now|date:"Y" }} Ezkito. Built with Django.
+    </div>
+
+    <div class="soft-muted small">
+      Email : choiman2021@gmail.com
+    </div>
+    <div class="d-flex gap-3 small">
+      <a class="text-decoration-none" href="{% url 'convert:file_converter' %}">File Converter</a>
+      <a class="text-decoration-none" href="{% url 'imagetools:resize' %}">Image Tools</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

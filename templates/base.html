@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+    <title>{% block title %}Ezkito{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="icon" href="{% static 'favicon/favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon/favicon-16x16.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'favicon/apple-touch-icon.png' %}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/">Ezkito</a>
+
+    <button class="navbar-toggler" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        <!-- File Convert -->
+        <li id="file_convert" class="nav-item dropdown">
+          <a class="nav-link" href="{% url 'convert:file_converter' %}" role="button">
+              File Convert
+          </a>
+
+        </li>
+
+        <!-- Edit Image -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown">
+            Edit Image
+          </a>
+          <ul class="dropdown-menu">
+
+            <!-- ❌ Overview 제거됨 -->
+
+            <li><a class="dropdown-item" href="{% url 'imagetools:resize' %}">
+              Resize
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'imagetools:bg_remove' %}">
+              Background Remove
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'imagetools:bg_color' %}">
+              Add Background Color
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'imagetools:compress' %}">
+              Compress
+            </a></li>
+
+            <li><hr class="dropdown-divider"></li>
+
+            <li><a class="dropdown-item" href="{% url 'imagetools:crop' %}">
+              Crop
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'imagetools:rotate' %}">
+              Rotate / Flip
+            </a></li>
+          </ul>
+        </li>
+
+        <!-- Placeholder Menus -->
+        <!--
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown">
+            Menu3
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Coming soon</a></li>
+          </ul>
+        </li>
+        -->
+
+        <!--
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown">
+            Menu4
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Coming soon</a></li>
+          </ul>
+        </li>
+        -->
+
+        <!--
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown">
+            Menu5
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Coming soon</a></li>
+          </ul>
+        </li>
+        -->
+
+        <!--
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown">
+            Menu6
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#">Coming soon</a></li>
+          </ul>
+        </li>
+        -->
+
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE CONTENT -->
+<main class="py-4">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/base.js' %}" defer></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

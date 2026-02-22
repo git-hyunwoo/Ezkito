@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Remove Background - Ezkito{% endblock %}
+
+{% block extra_head %}
+<style>
+  .preview-box {
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .preview-inner {
+    height: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background:
+      linear-gradient(45deg, #f2f2f2 25%, transparent 25%) -10px 0/20px 20px,
+      linear-gradient(45deg, transparent 75%, #f2f2f2 75%) -10px 0/20px 20px,
+      linear-gradient(45deg, transparent 75%, #f2f2f2 75%) 0px 0/20px 20px,
+      linear-gradient(45deg, #f2f2f2 25%, transparent 25%) 0px 0/20px 20px;
+  }
+  .preview-inner img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: none;
+  }
+  .preview-placeholder {
+    color: rgba(0,0,0,.45);
+    font-size: .95rem;
+    text-align: center;
+    padding: 0 1rem;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(1px);
+    background: rgba(255,255,255,.55);
+  }
+  .overlay .card {
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.12);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 1200px;">
+  <div class="d-flex align-items-end justify-content-between mb-3">
+    <div>
+      <h1 class="display-6 fw-semibold mb-1">Remove Background</h1>
+      <p class="text-muted mb-0">Preview the result with a smooth processing animation.</p>
+    </div>
+    <div class="text-muted small">
+      Supported: <b>JPG, PNG</b> (ICO not supported)
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- LEFT: Upload -->
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <div class="mb-2 fw-semibold">Files (multiple allowed)</div>
+
+          <form id="bgRemoveForm" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- IMPORTANT: accept blocks ico in picker -->
+            <input
+              id="fileInput"
+              class="form-control"
+              type="file"
+              name="files"
+              multiple
+              accept="image/png,image/jpeg"
+            >
+
+            <div class="text-muted small mt-2">
+              Tip: Single file shows live preview. Multiple files will download as ZIP.
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+              <button id="submitBtn" type="submit" class="btn btn-primary px-4">
+                <span id="btnSpinner" class="spinner-border spinner-border-sm me-2 d-none" aria-hidden="true"></span>
+                <span id="btnText">Remove Background</span>
+              </button>
+
+              <button id="clearBtn" type="button" class="btn btn-outline-secondary">
+                Clear
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="alert alert-info border-0 mt-3">
+        If you uploaded multiple files, the server returns a ZIP (no live preview).
+      </div>
+
+      <div id="errorBox" class="alert alert-danger d-none mt-3 mb-0"></div>
+    </div>
+
+    <!-- RIGHT: Preview -->
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-semibold">Preview</div>
+            <div id="statusText" class="text-muted small">Idle</div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="fw-semibold small mb-2">Original</div>
+              <div class="preview-box">
+                <div class="preview-inner">
+                  <div id="originalPlaceholder" class="preview-placeholder">
+                    Select a single JPG/PNG to preview
+                  </div>
+                  <img id="originalImg" alt="Original preview">
+                  <div id="overlay" class="overlay">
+                    <div class="card p-3 text-center">
+                      <div class="fw-semibold">Removing background…</div>
+                      <div class="text-muted small">This may take a few seconds</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-semibold small">Result</div>
+                <div class="text-muted small" id="processingHint"></div>
+              </div>
+
+              <div class="preview-box">
+                <div class="preview-inner">
+                  <div id="resultPlaceholder" class="preview-placeholder">
+                    Result will appear here
+                  </div>
+                  <img id="resultImg" alt="Result preview">
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end mt-3">
+                <a id="downloadBtn" class="btn btn-outline-primary disabled" href="#" download="ezkito_bg_removed.png">
+                  Download PNG
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/bg_remove.js' %}" defer></script>
+{% endblock %}
