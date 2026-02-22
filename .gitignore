@@ -1,0 +1,19 @@
+# 가상환경 (가장 무거운 범인)
+.venv/
+venv/
+ENV/
+
+# 파이썬 캐시 및 설정
+__pycache__/
+*.py[cod]
+*$py.class
+.idea/
+.vscode/
+
+# 데이터베이스 및 로그
+*.log
+db.sqlite3
+
+# OS 설정 파일
+.DS_Store
+Thumbs.db
