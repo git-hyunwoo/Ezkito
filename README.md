@@ -1,39 +1,8 @@
-# Ezkito
-
-
-on service : https://ezkito.com/
-
-🛠 Technical Specifications
-1. Core Environment (Infrastructure)
-Platform: Cloud PaaS (e.g., Render.com, Fly.io) Free Tier Instance
-
-RAM: 512 MB (Optimized for low-memory footprints)
-
-CPU: 0.1 Shared vCPU
-
-Storage: Ephemeral Storage (Stateless architecture)
-
-Network: Standard HTTP/HTTPS Inbound/Outbound
-
-2. Software Stack
-Language: Python 3.10+ (Utilizing latest memory management improvements)
-
-Framework: Django 5.x
-
-WSGI Server: Gunicorn (Configured with --workers 1 to prevent OOM errors)
-
-Database: SQLite (Zero-process overhead; runs directly on the file system to save RAM)
-
-3. Image Processing Engine
-Pillow (PIL): Used for lightweight format conversion, resizing, and filtering.
-
-Rembg / External API: Specialized for background removal (Offloaded to API if local RAM exceeds limits).
-
-JavaScript (Client-side): Offloads UI previews and basic geometric transforms to the user's browser to reduce server load.
-
-4. Deployment Configuration (Optimization)
-Static Files: WhiteNoise (Serves static assets directly via Django without needing a separate Nginx process).
-
-Concurrency: Single worker with limited threads to maintain a stable memory ceiling.
-
-Caching: Optional local memory cache with strict TTL and size limits.
+🚀 Overviewezkito is a specialized web tool for quick and easy image editing. The core challenge of this project was to provide seamless image manipulation features (Conversion, Background Removal, Cropping) within an extremely limited server environment.🛠 Technical SpecificationsThe system architecture is strictly optimized to survive and perform on a "Hobby Plan" instance.💻 Infrastructure (The "Survival" Spec)ComponentSpecificationDetailsPlatformCloud PaaS (Render)Free Tier InstanceMemory512 MB RAMOptimized for low-memory footprintProcessor0.1 Shared vCPUMinimalistic computational overheadStorageEphemeralStateless architecture for fast scaling📚 Software StackBackend: Django 5.x — Robust and scalable framework.WSGI Server: Gunicorn — Configured with --workers 1 to prevent Out-Of-Memory (OOM) crashes.Database: SQLite — Zero-process overhead; operates directly on the file system to save RAM.Static Files: WhiteNoise — Serves assets directly via Django, eliminating the need for a separate Nginx process.⚙️ Image Processing EngineTo handle high-resolution images on a 512MB RAM server, ezkito employs several optimization strategies:Pillow (PIL): Efficient format conversion, resizing, and filtering using lazy-loading techniques.Rembg / External API: Background removal is processed via optimized local logic or offloaded to external APIs if RAM limits are reached.Client-side Offloading: Basic geometric transforms and UI previews are handled by the user's browser (JavaScript/Canvas API) to minimize server-side CPU load.⚡ Optimization StrategyStrict Concurrency Control: Single worker/limited thread configuration to maintain a stable memory ceiling.Memory-efficient Caching: Optional local memory cache with strict TTL (Time-To-Live) and size constraints.Atomic File Handling: Temporary files are immediately purged after processing to prevent disk overflow in ephemeral environments.📂 Project StructurePlaintextezkito/
+├── core/               # Project configuration
+├── image_engine/       # Core logic for conversion & background removal
+├── static/             # Client-side processing scripts
+└── templates/          # Responsive UI layouts
+🏁 Installation & RunBash# Optimized run command for 512MB RAM environment
+gunicorn core.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000
+Developed with a focus on resource efficiency and engineering constraints.
