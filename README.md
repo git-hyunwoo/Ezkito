@@ -1,4 +1,4 @@
-# 🖼️ ezkito
+# ezkito (on service : https://ezkito.com/)
 > **Extreme Lightweight Image Processing Web Service**
 > *Crafted for high efficiency in resource-constrained environments (512MB RAM).*
 
@@ -25,23 +25,23 @@ The system architecture is strictly optimized to survive and perform on a **"Hob
 | **Processor** | **0.1 Shared vCPU** | Minimalistic computational overhead |
 | **Storage** | Ephemeral | Stateless architecture for fast scaling |
 
-### 📚 Software Stack
-* **Backend:** `Django 5.x` — Robust and scalable framework.
-* **WSGI Server:** `Gunicorn` — Configured with `--workers 1` to prevent Out-Of-Memory (OOM) crashes.
-* **Database:** `SQLite` — Zero-process overhead; runs directly on the file system to save RAM.
-* **Static Files:** `WhiteNoise` — Serves assets directly via Django, eliminating the need for a separate Nginx process.
+### Software Stack
+* **Backend :** `Django 5.x` — Robust and scalable framework.
+* **WSGI Server :** `Gunicorn` — Configured with `--workers 1` to prevent Out-Of-Memory (OOM) crashes.
+* **Database :** `SQLite` — Zero-process overhead; runs directly on the file system to save RAM.
+* **Static Files :** `WhiteNoise` — Serves assets directly via Django, eliminating the need for a separate Nginx process.
 
-## ⚙️ Image Processing Engine
+## Image Processing Engine
 To handle high-resolution images on a 512MB RAM server, **ezkito** employs several optimization strategies:
 
-* **Pillow (PIL):** Efficient format conversion, resizing, and filtering using lazy-loading techniques.
-* **Rembg / External API:** Background removal is processed via optimized local logic or offloaded to external APIs if RAM limits are reached.
-* **Client-side Offloading:** Basic geometric transforms and UI previews are handled by the user's browser (**JavaScript/Canvas API**) to minimize server-side CPU load.
+* **Pillow (PIL) :** Efficient format conversion, resizing, and filtering using lazy-loading techniques.
+* **Rembg / External API :** Background removal is processed via optimized local logic or offloaded to external APIs if RAM limits are reached.
+* **Client-side Offloading :** Basic geometric transforms and UI previews are handled by the user's browser (**JavaScript/Canvas API**) to minimize server-side CPU load.
 
 ## ⚡ Optimization Strategy
-1. **Strict Concurrency Control:** Single worker/limited thread configuration to maintain a stable memory ceiling.
-2. **Memory-efficient Caching:** Optional local memory cache with strict TTL and size constraints.
-3. **Atomic File Handling:** Temporary files are immediately purged after processing to prevent disk overflow.
+1. **Strict Concurrency Control :** Single worker/limited thread configuration to maintain a stable memory ceiling.
+2. **Memory-efficient Caching :** Optional local memory cache with strict TTL and size constraints.
+3. **Atomic File Handling :** Temporary files are immediately purged after processing to prevent disk overflow.
 
 ---
 
